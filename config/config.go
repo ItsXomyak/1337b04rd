@@ -5,6 +5,8 @@ import (
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/joho/godotenv"
 )
 
 type Config struct {
@@ -42,8 +44,12 @@ type Config struct {
 }
 
 func Load() *Config {
+	if os.Getenv("APP_ENV") != "production" {
+		_ = godotenv.Load()
+	}
 	cfg := &Config{}
 
+	// Port
 	cfg.Port = mustGetInt("PORT")
 
 	// DB config

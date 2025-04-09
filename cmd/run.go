@@ -1,4 +1,4 @@
-package main
+package cmd
 
 import (
 	"1337b04rd/config"
@@ -6,7 +6,7 @@ import (
 	"1337b04rd/internal/common/logger"
 )
 
-func main() {
+func Run() {
 	cfg := config.Load()
 	logger.Init(cfg.AppEnv)
 
