@@ -2,6 +2,7 @@ package main
 
 import (
 	"1337b04rd/config"
+	"1337b04rd/internal/adapters/postgres"
 	"1337b04rd/internal/common/logger"
 )
 
@@ -9,5 +10,12 @@ func main() {
 	cfg := config.Load()
 	logger.Init(cfg.AppEnv)
 
-	logger.Info("App started", "env", cfg.AppEnv, "port", cfg.Port)
+	db, err := postgres.NewPostgresDB(cfg)
+	if err != nil {
+		logger.Error("Failed to connect to DB", "err", err)
+		return
+	}
+	defer db.Close()
+
+	logger.Info("Connected to PostgreSQL", "host", cfg.DB.Host, "db", cfg.DB.Name)
 }
