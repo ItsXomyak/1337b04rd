@@ -1,3 +1,19 @@
+### 0. **Архитектура:**
+domain -> core. core -> models, interfaces.
+app -> services, utils, ports.
+adapters -> external services(f.e. postgres, ricknmorty, handlers).
+
+### **Планирование: adapters**
+   - [azhaxyly] handlers for avatar, session, middleware for auth and logger,rickmorty
+   - [mromanul] handlers for threads, comments, s3
+
+### **Планирование: app/ports and app/services**
+   - [azhaxyly] rewrite auth-service to cookies,  avatar, session logic
+   - [mromanul] threads, comments logic
+
+### **Планирование: domain**
+   - [azhaxyly] avatar, session modules
+   - [mromanul] threads, comments modules
 
 ### 1. **Подготовка инфраструктуры проекта:**
    - [+] Настроить базовую структуру проекта (папки, модули и зависимости).
@@ -6,7 +22,7 @@
    - [+] Определить структуру тестов (например, используя `testing` в Go).
 
 ### 2. **Разработка моделей данных:**
-   - [50%] Определить все сущности (например, `User`, `Post`, `Comment`, `Thread`, `Avatar` и т.д.).
+   - [+] Определить все сущности (например, `User`, `Post`, `Comment`, `Thread`, `Avatar` и т.д.).
    - [+] Реализовать модели данных для каждой сущности (структуры Go).
    - [+] Создать и выполнить миграции базы данных для этих моделей (создать таблицы и индексы).
    - [ ] Реализовать методы для работы с базой данных (CRUD) для каждой сущности.
@@ -28,7 +44,7 @@
    
 ### 6. **Реализация аутентификации и авторизации:**
    - [ ] Настроить регистрацию пользователей (например, через email).
-   - [ ] Реализовать систему аутентификации (JWT, сессии).
+   - [ ] Реализовать систему аутентификации (JWT, сессии). !(надо через Cookies а не JWT)!
    - [ ] Реализовать авторизацию для разных ролей пользователей (например, администратор, модератор, обычный пользователь).
    - [ ] Настроить middleware для проверки прав доступа.
 
