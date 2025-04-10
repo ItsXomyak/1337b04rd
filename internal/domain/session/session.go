@@ -1,6 +1,9 @@
 package session
 
-import "time"
+import (
+	. "1337b04rd/internal/domain/errors"
+	"time"
+)
 
 type Session struct {
 	ID          string

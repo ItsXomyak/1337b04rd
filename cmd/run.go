@@ -3,7 +3,7 @@ package cmd
 import (
 	"1337b04rd/config"
 	"1337b04rd/internal/adapters/postgres"
-	"1337b04rd/internal/common/logger"
+	"1337b04rd/internal/app/common/logger"
 )
 
 func Run() {
