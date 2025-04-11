@@ -5,7 +5,7 @@ import (
 	"database/sql"
 
 	uuidHelper "1337b04rd/internal/app/common/utils"
-	. "1337b04rd/internal/domain/errors"
+	"1337b04rd/internal/domain/errors"
 	"1337b04rd/internal/domain/thread"
 )
 
@@ -43,7 +43,7 @@ func (r *ThreadRepository) GetThreadByID(ctx context.Context, id uuidHelper.UUID
 	row := r.db.QueryRowContext(ctx, GetThreadByID, id)
 	t, err := scanThread(row)
 	if err == sql.ErrNoRows {
-		return nil, ErrThreadNotFound
+		return nil, errors.ErrThreadNotFound
 	}
 	return t, err
 }

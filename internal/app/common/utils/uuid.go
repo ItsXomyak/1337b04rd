@@ -27,6 +27,7 @@ func (u UUID) String() string {
 		u[0:4], u[4:6], u[6:8], u[8:10], u[10:])
 }
 
+// чек если все байты равны нулю
 func (u UUID) IsZero() bool {
 	for _, b := range u[:] {
 		if b != 0 {
