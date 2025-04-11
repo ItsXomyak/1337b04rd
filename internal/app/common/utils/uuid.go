@@ -31,6 +31,17 @@ func (u UUID) String() string {
 		u[0:4], u[4:6], u[6:8], u[8:10], u[10:])
 }
 
+// парсит uuid из строки в байты
+func ParseUUID(s string) (UUID, error) {
+	var u UUID
+	n, err := fmt.Sscanf(s, "%08x-%04x-%04x-%04x-%012x",
+		&u[0], &u[4], &u[6], &u[8], &u[10])
+	if err != nil || n != 5 {
+		return UUID{}, fmt.Errorf("invalid UUID format: %s", s)
+	}
+	return u, nil
+}
+
 // чек если все байты равны нулю
 func (u UUID) IsZero() bool {
 	for _, b := range u[:] {

@@ -1,16 +1,16 @@
 package unit
 
 import (
+	"1337b04rd/internal/app/common/utils"
 	"testing"
-	"yourproject/internal/domain/common"
 )
 
 func TestNewUUID(t *testing.T) {
-	id1, err := common.NewUUID()
+	id1, err := utils.NewUUID()
 	if err != nil {
 		t.Fatalf("failed to generate UUID: %v", err)
 	}
-	id2, err := common.NewUUID()
+	id2, err := utils.NewUUID()
 	if err != nil {
 		t.Fatalf("failed to generate UUID: %v", err)
 	}

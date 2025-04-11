@@ -4,7 +4,7 @@ import (
 	"database/sql"
 
 	uuidHelper "1337b04rd/internal/app/common/utils"
-	. "1337b04rd/internal/domain/errors"
+	"1337b04rd/internal/domain/errors"
 	"1337b04rd/internal/domain/thread"
 )
 
@@ -40,7 +40,7 @@ func (r *ThreadRepository) GetThreadByID(id uuidHelper.UUID) (*thread.Thread, er
 		FROM threads
 		WHERE id = $1`
 	t := &thread.Thread{}
-	var imageURL sql.NullString 
+	var imageURL sql.NullString
 	var lastCommented sql.NullTime
 
 	err := r.db.QueryRow(query, id).Scan(
@@ -54,14 +54,14 @@ func (r *ThreadRepository) GetThreadByID(id uuidHelper.UUID) (*thread.Thread, er
 		&t.IsDeleted,
 	)
 	if err == sql.ErrNoRows {
-		return nil, ErrThreadNotFound
+		return nil, errors.ErrThreadNotFound
 	}
 	if err != nil {
 		return nil, err
 	}
 
 	if imageURL.Valid {
-		t.ImageURL = &imageURL.String 
+		t.ImageURL = &imageURL.String
 	}
 	if lastCommented.Valid {
 		t.LastCommented = &lastCommented.Time
