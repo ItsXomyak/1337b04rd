@@ -1,34 +1,53 @@
 package postgres
 
 import (
+	"context"
 	"database/sql"
+	"log/slog"
 
+	"1337b04rd/internal/app/common/utils"
 	"1337b04rd/internal/domain/comment"
-	uuidHelper "1337b04rd/internal/app/common/utils"
 )
 
 type CommentRepository struct {
-	db *sql.DB
+	db     *sql.DB
+	logger *slog.Logger
 }
 
-func NewCommentRepository(db *sql.DB) *CommentRepository {
-	return &CommentRepository{db: db}
+func NewCommentRepository(db *sql.DB, logger *slog.Logger) *CommentRepository {
+	return &CommentRepository{
+		db:     db,
+		logger: logger,
+	}
 }
 
-func (r *CommentRepository) CreateComment(c *comment.Comment) error {
-	query := `
-		INSERT INTO comments (id, thread_id, parent_comment_id, content, image_url, session_id, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)`
-	_, err := r.db.Exec(query, c.ID, c.ThreadID, c.ParentCommentID, c.Content, c.ImageURL, c.SessionID, c.CreatedAt)
-	return err
+
+func (r *CommentRepository) CreateComment(ctx context.Context, c *comment.Comment) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
+	_, err := r.db.ExecContext(ctx, CreateComment,
+		c.ID,
+		c.ThreadID,
+		c.ParentCommentID,
+		c.Content,
+		c.ImageURL,
+		c.SessionID,
+		c.CreatedAt,
+	)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func (r *CommentRepository) GetCommentsByThreadID(threadID uuidHelper.UUID) ([]*comment.Comment, error) {
-	query := `
-		SELECT id, thread_id, parent_comment_id, content, image_url, session_id, created_at
-		FROM comments
-		WHERE thread_id = $1`
-	rows, err := r.db.Query(query, threadID)
+func (r *CommentRepository) GetCommentsByThreadID(ctx context.Context, threadID utils.UUID) ([]*comment.Comment, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
+	rows, err := r.db.QueryContext(ctx, GetCommentsByThreadID, threadID)
 	if err != nil {
 		return nil, err
 	}
@@ -36,20 +55,50 @@ func (r *CommentRepository) GetCommentsByThreadID(threadID uuidHelper.UUID) ([]*
 
 	var comments []*comment.Comment
 	for rows.Next() {
-		c := &comment.Comment{}
-		var imageURL, parentID sql.NullString
-		err := rows.Scan(&c.ID, &c.ThreadID, &parentID, &c.Content, &imageURL, &c.SessionID, &c.CreatedAt)
+		c, err := scanComment(rows)
 		if err != nil {
+			r.logger.Error("failed to scan comment", "error", err, "thread_id", threadID)
 			return nil, err
-		}
-		if imageURL.Valid {
-			c.ImageURL = &imageURL.String
-		}
-		if parentID.Valid {
-			parsedID := uuidHelper.UUID{} 
-			c.ParentCommentID = &parsedID
 		}
 		comments = append(comments, c)
 	}
-	return comments, rows.Err()
+
+	if err := rows.Err(); err != nil {
+		r.logger.Error("error in comment rows", "error", err, "thread_id", threadID)
+		return nil, err
+	}
+	return comments, nil
+}
+
+func scanComment(scanner interface {
+	Scan(dest ...interface{}) error
+}) (*comment.Comment, error) {
+	c := &comment.Comment{}
+	var imageURL, parentID sql.NullString
+
+	err := scanner.Scan(
+		&c.ID,
+		&c.ThreadID,
+		&parentID,
+		&c.Content,
+		&imageURL,
+		&c.SessionID,
+		&c.CreatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	if imageURL.Valid {
+		c.ImageURL = &imageURL.String
+	}
+	if parentID.Valid {
+		parsedID, err := utils.ParseUUID(parentID.String)
+		if err != nil {
+			return nil, err
+		}
+		c.ParentCommentID = &parsedID
+	}
+
+	return c, nil
 }
