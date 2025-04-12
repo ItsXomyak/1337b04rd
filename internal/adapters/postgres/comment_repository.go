@@ -3,21 +3,19 @@ package postgres
 import (
 	"context"
 	"database/sql"
-	"log/slog"
 
+	"1337b04rd/internal/app/common/logger"
 	"1337b04rd/internal/app/common/utils"
 	"1337b04rd/internal/domain/comment"
 )
 
 type CommentRepository struct {
 	db     *sql.DB
-	logger *slog.Logger
 }
 
-func NewCommentRepository(db *sql.DB, logger *slog.Logger) *CommentRepository {
+func NewCommentRepository(db *sql.DB) *CommentRepository {
 	return &CommentRepository{
 		db:     db,
-		logger: logger,
 	}
 }
 
@@ -57,14 +55,14 @@ func (r *CommentRepository) GetCommentsByThreadID(ctx context.Context, threadID 
 	for rows.Next() {
 		c, err := scanComment(rows)
 		if err != nil {
-			r.logger.Error("failed to scan comment", "error", err, "thread_id", threadID)
+			logger.Error("failed to scan comment", "error", err, "thread_id", threadID)
 			return nil, err
 		}
 		comments = append(comments, c)
 	}
 
 	if err := rows.Err(); err != nil {
-		r.logger.Error("error in comment rows", "error", err, "thread_id", threadID)
+		logger.Error("error in comment rows", "error", err, "thread_id", threadID)
 		return nil, err
 	}
 	return comments, nil

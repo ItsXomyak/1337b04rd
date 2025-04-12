@@ -30,14 +30,18 @@ func Run() {
 	logger.Info("connected to PostgreSQL", "host", cfg.DB.Host, "db", cfg.DB.Name)
 
 	sessionRepo := postgres.NewSessionRepository(db)
+	threadRepo := postgres.NewThreadRepository(db)
+	commentRepo := postgres.NewCommentRepository(db)
 
 	httpClient := &http.Client{}
 	avatarClient := rickmorty.NewClient(cfg.AvatarAPI.BaseURL, httpClient)
 
 	avatarSvc := services.NewAvatarService(avatarClient)
 	sessionSvc := services.NewSessionService(sessionRepo, avatarSvc, cfg.Session.Duration)
+	threadSvc := services.NewThreadService(threadRepo)
+	commentSvc := services.NewCommentService(commentRepo, threadRepo)
 
-	router := httpadapter.NewRouter(sessionSvc, avatarSvc)
+	router := httpadapter.NewRouter(sessionSvc, avatarSvc, threadSvc, commentSvc)
 
 	addr := fmt.Sprintf(":%d", *port)
 	logger.Info("starting server", "address", addr)
