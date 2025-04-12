@@ -7,4 +7,5 @@ type SessionPort interface {
 	CreateSession(s *session.Session) error
 	DeleteExpired() error
 	ListActiveSessions() ([]*session.Session, error)
+	UpdateDisplayName(id string, name string) error
 }

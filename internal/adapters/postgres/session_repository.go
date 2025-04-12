@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"time"
 
+	"1337b04rd/internal/app/common/logger"
 	"1337b04rd/internal/app/common/utils"
 	"1337b04rd/internal/domain/errors"
 	"1337b04rd/internal/domain/session"
@@ -28,6 +29,9 @@ func (r *SessionRepository) CreateSession(s *session.Session) error {
 		s.CreatedAt,
 		s.ExpiresAt,
 	)
+	if err != nil {
+		logger.Error("failed to insert session", "error", err, "id", s.ID.String())
+	}
 	return err
 }
 
@@ -43,13 +47,16 @@ func (r *SessionRepository) GetSessionByID(id string) (*session.Session, error) 
 	err := row.Scan(&uuidStr, &s.AvatarURL, &s.DisplayName, &s.CreatedAt, &s.ExpiresAt)
 	if err != nil {
 		if err == sql.ErrNoRows {
+			logger.Error("session not found", "id", id)
 			return nil, errors.ErrSessionNotFound
 		}
+		logger.Error("failed to scan session", "error", err, "id", id)
 		return nil, err
 	}
 
 	uid, err := utils.ParseUUID(uuidStr)
 	if err != nil {
+		logger.Error("invalid UUID string from DB", "uuidStr", uuidStr, "error", err)
 		return nil, err
 	}
 	s.ID = uid
@@ -61,6 +68,9 @@ func (r *SessionRepository) DeleteExpired() error {
 		DELETE FROM sessions
 		WHERE expires_at < $1`
 	_, err := r.db.Exec(query, time.Now())
+	if err != nil {
+		logger.Error("failed to delete expired sessions", "error", err)
+	}
 	return err
 }
 
@@ -70,6 +80,7 @@ func (r *SessionRepository) ListActiveSessions() ([]*session.Session, error) {
 		FROM sessions`
 	rows, err := r.db.Query(query)
 	if err != nil {
+		logger.Error("failed to query active sessions", "error", err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -80,15 +91,31 @@ func (r *SessionRepository) ListActiveSessions() ([]*session.Session, error) {
 		var uuidStr string
 		err := rows.Scan(&uuidStr, &s.AvatarURL, &s.DisplayName, &s.CreatedAt, &s.ExpiresAt)
 		if err != nil {
+			logger.Error("failed to scan session row", "error", err)
 			return nil, err
 		}
 		uid, err := utils.ParseUUID(uuidStr)
 		if err != nil {
+			logger.Error("failed to parse UUID", "uuidStr", uuidStr, "error", err)
 			return nil, err
 		}
 		s.ID = uid
 		sessions = append(sessions, &s)
 	}
 
-	return sessions, rows.Err()
+	if err := rows.Err(); err != nil {
+		logger.Error("rows iteration error", "error", err)
+		return nil, err
+	}
+
+	return sessions, nil
+}
+
+func (r *SessionRepository) UpdateDisplayName(id string, name string) error {
+	query := `UPDATE sessions SET display_name = $1 WHERE id = $2`
+	_, err := r.db.Exec(query, name, id)
+	if err != nil {
+		logger.Error("failed to update display name", "id", id, "error", err)
+	}
+	return err
 }

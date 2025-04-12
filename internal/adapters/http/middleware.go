@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	"1337b04rd/internal/app/common/logger"
 	"1337b04rd/internal/app/services"
 	"1337b04rd/internal/domain/session"
 )
@@ -28,11 +29,12 @@ func SessionMiddleware(svc *services.SessionService, cookieName string) func(htt
 
 			sess, err := svc.GetOrCreate(cookieVal)
 			if err != nil {
-				http.Error(w, "failed to resolve session", http.StatusInternalServerError)
+				logger.Error("failed to resolve session", "error", err)
+				Respond(w, http.StatusInternalServerError, map[string]string{"error": "failed to resolve session"})
 				return
 			}
 
-			// установить куку, если она ее не было или она была другой
+			// установить куку, если её не было или она была другой
 			if cookie == nil || cookie.Value != sess.ID.String() {
 				http.SetCookie(w, &http.Cookie{
 					Name:     cookieName,
@@ -42,6 +44,7 @@ func SessionMiddleware(svc *services.SessionService, cookieName string) func(htt
 					HttpOnly: true,
 					SameSite: http.SameSiteLaxMode,
 				})
+				logger.Info("set new session cookie", "session_id", sess.ID)
 			}
 
 			ctx := context.WithValue(r.Context(), sessionKey, sess)
