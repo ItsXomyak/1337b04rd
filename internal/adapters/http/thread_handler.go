@@ -26,7 +26,7 @@ func (h *ThreadHandler) CreateThread(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseMultipartForm(10 << 20)
 	if err != nil {
 		logger.Error("failed to parse form", "error", err)
-		http.Error(w, `{"error": "Invalid form data"}`, http.StatusBadRequest)
+		Respond(w, http.StatusBadRequest, map[string]string{"error": "Invalid form data"})
 		return
 	}
 
@@ -42,20 +42,20 @@ func (h *ThreadHandler) CreateThread(w http.ResponseWriter, r *http.Request) {
 	sessionID, err := utils.ParseUUID(sessionIDStr)
 	if err != nil {
 		logger.Error("invalid session_id", "error", err)
-		http.Error(w, `{"error": "Invalid session_id"}`, http.StatusBadRequest)
+		Respond(w, http.StatusBadRequest, map[string]string{"error": "Invalid session ID"})
 		return
 	}
 
 	if title == "" || content == "" {
 		logger.Warn("missing required fields", "title", title, "content", content)
-		http.Error(w, `{"error": "Title and content are required"}`, http.StatusBadRequest)
+		Respond(w, http.StatusBadRequest, map[string]string{"error": "Title and content are required"})
 		return
 	}
 
 	thread, err := h.threadSvc.CreateThread(ctx, title, content, imageURLPtr, sessionID)
 	if err != nil {
 		logger.Error("failed to create thread", "error", err)
-		http.Error(w, `{"error": "Failed to create thread"}`, http.StatusInternalServerError)
+		Respond(w, http.StatusInternalServerError, map[string]string{"error": "Failed to create thread"})
 		return
 	}
 
@@ -67,7 +67,7 @@ func (h *ThreadHandler) CreateThread(w http.ResponseWriter, r *http.Request) {
 func (h *ThreadHandler) GetThread(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		logger.Warn("invalid method", "method", r.Method, "path", r.URL.Path)
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		Respond(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
 		return
 	}
 
@@ -75,7 +75,7 @@ func (h *ThreadHandler) GetThread(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 	if !strings.HasPrefix(path, "/threads/") {
 		logger.Warn("invalid path", "path", path)
-		http.Error(w, `{"error": "Invalid thread ID"}`, http.StatusBadRequest)
+		Respond(w, http.StatusNotFound, map[string]string{"error": "Not found"})
 		return
 	}
 
@@ -83,7 +83,7 @@ func (h *ThreadHandler) GetThread(w http.ResponseWriter, r *http.Request) {
 	id, err := utils.ParseUUID(idStr)
 	if err != nil {
 		logger.Error("invalid thread id", "error", err, "id", idStr)
-		http.Error(w, `{"error": "Invalid thread ID"}`, http.StatusBadRequest)
+		Respond(w, http.StatusBadRequest, map[string]string{"error": "Invalid thread ID"})
 		return
 	}
 
@@ -91,11 +91,11 @@ func (h *ThreadHandler) GetThread(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if err == errors.ErrThreadNotFound {
 			logger.Warn("thread not found", "id", id)
-			http.Error(w, `{"error": "Thread not found"}`, http.StatusNotFound)
+			Respond(w, http.StatusNotFound, map[string]string{"error": "Thread not found"})
 			return
 		}
 		logger.Error("failed to get thread", "error", err, "id", id)
-		http.Error(w, `{"error": "Failed to get thread"}`, http.StatusInternalServerError)
+		Respond(w, http.StatusInternalServerError, map[string]string{"error": "Failed to get thread"})
 		return
 	}
 
@@ -108,13 +108,13 @@ func (h *ThreadHandler) GetThread(w http.ResponseWriter, r *http.Request) {
 func (h *ThreadHandler) ListActiveThreads(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		logger.Warn("invalid method", "method", r.Method, "path", r.URL.Path)
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		Respond(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
 		return
 	}
 
 	if r.URL.Path != "/threads" {
 		logger.Warn("invalid path", "path", r.URL.Path)
-		http.Error(w, `{"error": "Not found"}`, http.StatusNotFound)
+		Respond(w, http.StatusNotFound, map[string]string{"error": "Not found"})
 		return
 	}
 
@@ -122,7 +122,7 @@ func (h *ThreadHandler) ListActiveThreads(w http.ResponseWriter, r *http.Request
 	threads, err := h.threadSvc.ListActiveThreads(ctx)
 	if err != nil {
 		logger.Error("failed to list active threads", "error", err)
-		http.Error(w, `{"error": "Failed to list threads"}`, http.StatusInternalServerError)
+		Respond(w, http.StatusInternalServerError, map[string]string{"error": "Failed to list threads"})
 		return
 	}
 
@@ -135,13 +135,13 @@ func (h *ThreadHandler) ListActiveThreads(w http.ResponseWriter, r *http.Request
 func (h *ThreadHandler) ListAllThreads(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		logger.Warn("invalid method", "method", r.Method, "path", r.URL.Path)
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		Respond(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
 		return
 	}
 
 	if r.URL.Path != "/threads/all" {
 		logger.Warn("invalid path", "path", r.URL.Path)
-		http.Error(w, `{"error": "Not found"}`, http.StatusNotFound)
+		Respond(w, http.StatusNotFound, map[string]string{"error": "Not found"})
 		return
 	}
 
@@ -149,7 +149,7 @@ func (h *ThreadHandler) ListAllThreads(w http.ResponseWriter, r *http.Request) {
 	threads, err := h.threadSvc.ListAllThreads(ctx)
 	if err != nil {
 		logger.Error("failed to list all threads", "error", err)
-		http.Error(w, `{"error": "Failed to list threads"}`, http.StatusInternalServerError)
+		Respond(w, http.StatusInternalServerError, map[string]string{"error": "Failed to list threads"})
 		return
 	}
 

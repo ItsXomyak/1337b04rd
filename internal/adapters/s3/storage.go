@@ -7,11 +7,12 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log/slog"
 	"net/http"
 	"path/filepath"
+	"sync"
 	"time"
 
+	"1337b04rd/internal/app/common/logger"
 	uuidHelper "1337b04rd/internal/app/common/utils"
 )
 
@@ -21,10 +22,9 @@ type S3Client struct {
 	secretKey string
 	bucket    string
 	client    *http.Client
-	logger    *slog.Logger
 }
 
-func NewS3Client(endpoint, accessKey, secretKey, bucket string, logger *slog.Logger) (*S3Client, error) {
+func NewS3Client(endpoint, accessKey, secretKey, bucket string) (*S3Client, error) {
 	// Создаем HTTP-клиент с таймаутом
 	client := &http.Client{
 		Timeout: 10 * time.Second,
@@ -36,14 +36,14 @@ func NewS3Client(endpoint, accessKey, secretKey, bucket string, logger *slog.Log
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodHead, fmt.Sprintf("http://%s/%s", endpoint, bucket), nil)
 	if err != nil {
-		logger.Error("failed to create bucket check request", "error", err)
+		logger.Error("failed to create request", "error", err)
 		return nil, err
 	}
 	req.SetBasicAuth(accessKey, secretKey)
 
 	resp, err := client.Do(req)
 	if err != nil {
-		logger.Error("failed to check bucket", "bucket", bucket, "error", err)
+		logger.Error("failed to send request", "error", err)
 		return nil, err
 	}
 	defer resp.Body.Close()
@@ -63,24 +63,54 @@ func NewS3Client(endpoint, accessKey, secretKey, bucket string, logger *slog.Log
 		secretKey: secretKey,
 		bucket:    bucket,
 		client:    client,
-		logger:    logger,
 	}, nil
 }
 
-// UploadImage загружает изображение в S3 и возвращает его URL.
+// Функция для параллельной загрузки нескольких изображений
+func (s *S3Client) UploadImagesParallel(files map[string]io.Reader) (map[string]string, error) {
+	var wg sync.WaitGroup
+	results := make(map[string]string)
+	errors := make(chan error, len(files))
+
+	// Загружаем каждый файл параллельно
+	for fileName, file := range files {
+		wg.Add(1)
+		go func(fileName string, file io.Reader) {
+			defer wg.Done()
+			url, err := s.UploadImage(file, 0, "") // передаем загруженный файл и размер
+			if err != nil {
+				errors <- err
+				return
+			}
+			results[fileName] = url
+		}(fileName, file)
+	}
+
+	// Ожидаем завершения всех горутин
+	wg.Wait()
+	close(errors)
+
+	// Проверяем, были ли ошибки
+	if len(errors) > 0 {
+		return nil, <-errors
+	}
+
+	return results, nil
+}
+
 func (s *S3Client) UploadImage(file io.Reader, size int64, contentType string) (string, error) {
 	// Генерируем уникальное имя файла
 	fileID, err := uuidHelper.NewUUID()
 	if err != nil {
-		s.logger.Error("failed to generate file ID", "error", err)
+		logger.Error("failed to generate UUID", "error", err)
 		return "", err
 	}
 	fileName := fmt.Sprintf("%s%s", fileID.String(), filepath.Ext(contentType)) // Например, "uuid.jpg"
 
-	// Читаем файл в память (для больших файлов можно использовать multipart upload, но начнем с простого)
+	// Читаем файл в память
 	data, err := io.ReadAll(file)
 	if err != nil {
-		s.logger.Error("failed to read file", "error", err)
+		logger.Error("failed to read file", "error", err)
 		return "", err
 	}
 
@@ -90,7 +120,7 @@ func (s *S3Client) UploadImage(file io.Reader, size int64, contentType string) (
 	// Создаем PUT-запрос
 	req, err := http.NewRequest(http.MethodPut, url, bytes.NewReader(data))
 	if err != nil {
-		s.logger.Error("failed to create upload request", "error", err)
+		logger.Error("failed to create upload request", "error", err)
 		return "", err
 	}
 	req.Header.Set("Content-Type", contentType)
@@ -100,21 +130,54 @@ func (s *S3Client) UploadImage(file io.Reader, size int64, contentType string) (
 	// Выполняем запрос
 	resp, err := s.client.Do(req)
 	if err != nil {
-		s.logger.Error("failed to upload image", "file", fileName, "error", err)
+		logger.Error("failed to upload image", "file", fileName, "error", err)
 		return "", err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		s.logger.Error("unexpected response from S3", "file", fileName, "status", resp.Status)
+		logger.Error("unexpected response from S3", "file", fileName, "status", resp.Status)
 		return "", fmt.Errorf("unexpected status: %s", resp.Status)
 	}
 
-	s.logger.Info("successfully uploaded image", "url", url)
+	logger.Info("successfully uploaded image", "url", url)
 	return url, nil
 }
 
 // GetImageURL возвращает URL изображения по его имени (если нужно).
 func (s *S3Client) GetImageURL(fileName string) string {
 	return fmt.Sprintf("http://%s/%s/%s", s.endpoint, s.bucket, fileName)
+}
+
+// DeleteFile удаляет файл из MinIO по его имени.
+func (s *S3Client) DeleteFile(fileName string) error {
+	// Формируем URL для удаления файла
+	url := fmt.Sprintf("http://%s/%s/%s", s.endpoint, s.bucket, fileName)
+
+	// Создаем DELETE-запрос
+	req, err := http.NewRequest(http.MethodDelete, url, nil)
+	if err != nil {
+		logger.Error("failed to create delete request", "error", err)
+		return err
+	}
+
+	// Добавляем аутентификацию
+	req.SetBasicAuth(s.accessKey, s.secretKey)
+
+	// Выполняем запрос
+	resp, err := s.client.Do(req)
+	if err != nil {
+		logger.Error("failed to send delete request", "file", fileName, "error", err)
+		return err
+	}
+	defer resp.Body.Close()
+
+	// Проверяем статус ответа
+	if resp.StatusCode != http.StatusNoContent {
+		logger.Error("unexpected response from S3 while deleting file", "file", fileName, "status", resp.Status)
+		return fmt.Errorf("unexpected status: %s", resp.Status)
+	}
+
+	logger.Info("successfully deleted file", "file", fileName)
+	return nil
 }

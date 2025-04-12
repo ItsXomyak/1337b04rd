@@ -10,18 +10,18 @@ import (
 )
 
 type CommentRepository struct {
-	db     *sql.DB
+	db *sql.DB
 }
 
 func NewCommentRepository(db *sql.DB) *CommentRepository {
 	return &CommentRepository{
-		db:     db,
+		db: db,
 	}
 }
 
-
 func (r *CommentRepository) CreateComment(ctx context.Context, c *comment.Comment) error {
 	if err := ctx.Err(); err != nil {
+		logger.Error("context error while creating comment", "error", err, "comment_id", c.ID)
 		return err
 	}
 
@@ -35,6 +35,7 @@ func (r *CommentRepository) CreateComment(ctx context.Context, c *comment.Commen
 		c.CreatedAt,
 	)
 	if err != nil {
+		logger.Error("failed to create comment", "error", err, "comment_id", c.ID)
 		return err
 	}
 	return nil
@@ -42,11 +43,13 @@ func (r *CommentRepository) CreateComment(ctx context.Context, c *comment.Commen
 
 func (r *CommentRepository) GetCommentsByThreadID(ctx context.Context, threadID utils.UUID) ([]*comment.Comment, error) {
 	if err := ctx.Err(); err != nil {
+		logger.Error("context error while getting comments", "error", err, "thread_id", threadID)
 		return nil, err
 	}
 
 	rows, err := r.db.QueryContext(ctx, GetCommentsByThreadID, threadID)
 	if err != nil {
+		logger.Error("failed to query comments by thread id", "error", err, "thread_id", threadID)
 		return nil, err
 	}
 	defer rows.Close()
@@ -84,6 +87,7 @@ func scanComment(scanner interface {
 		&c.CreatedAt,
 	)
 	if err != nil {
+		logger.Error("failed to scan comment row", "error", err)
 		return nil, err
 	}
 
@@ -93,6 +97,7 @@ func scanComment(scanner interface {
 	if parentID.Valid {
 		parsedID, err := utils.ParseUUID(parentID.String)
 		if err != nil {
+			logger.Error("failed to parse parent comment ID", "error", err, "raw_parent_id", parentID.String)
 			return nil, err
 		}
 		c.ParentCommentID = &parsedID

@@ -4,15 +4,15 @@ app -> services, utils, ports.
 adapters -> external services(f.e. postgres, ricknmorty, handlers).
 
 ### **Планирование: adapters**
-   - [azhaxyly] handlers for avatar, session, middleware for auth and logger,rickmorty
+   - [azhaxyly] ✔️ handlers for avatar, session, middleware for auth and logger,rickmorty 
    - [mromanul] handlers for threads, comments, s3
 
 ### **Планирование: app/ports and app/services**
-   - [azhaxyly] rewrite auth-service to cookies,  avatar, session logic
+   - [azhaxyly] ✔️ rewrite auth-service to cookies,  avatar, session logic  (no more auth-service)
    - [mromanul] threads, comments logic
 
 ### **Планирование: domain**
-   - [azhaxyly] avatar, session modules
+   - [azhaxyly] ✔️ avatar, session modules
    - [mromanul] threads, comments modules
 
 ### 1. **Подготовка инфраструктуры проекта:**

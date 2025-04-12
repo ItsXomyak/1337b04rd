@@ -25,7 +25,7 @@ func NewCommentHandler(commentSvc *services.CommentService, logger *slog.Logger)
 func (h *CommentHandler) CreateComment(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		logger.Warn("invalid method", "method", r.Method, "path", r.URL.Path)
-		http.Error(w, `{"error": "Method not allowed"}`, http.StatusMethodNotAllowed)
+		Respond(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
 		return
 	}
 
@@ -33,7 +33,7 @@ func (h *CommentHandler) CreateComment(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 	if !strings.HasPrefix(path, "/threads/") || !strings.Contains(path, "/comments") {
 		logger.Warn("invalid path", "path", path)
-		http.Error(w, `{"error": "Invalid path"}`, http.StatusBadRequest)
+		Respond(w, http.StatusBadRequest, map[string]string{"error": "Invalid path"})
 		return
 	}
 
@@ -41,21 +41,21 @@ func (h *CommentHandler) CreateComment(w http.ResponseWriter, r *http.Request) {
 	parts := strings.Split(strings.TrimPrefix(path, "/threads/"), "/")
 	if len(parts) < 2 || parts[1] != "comments" {
 		logger.Warn("invalid path format", "path", path)
-		http.Error(w, `{"error": "Invalid thread ID"}`, http.StatusBadRequest)
+		Respond(w, http.StatusBadRequest, map[string]string{"error": "Invalid path"})
 		return
 	}
 	threadIDStr := parts[0]
 	threadID, err := utils.ParseUUID(threadIDStr)
 	if err != nil {
 		logger.Error("invalid thread_id", "error", err, "thread_id", threadIDStr)
-		http.Error(w, `{"error": "Invalid thread ID"}`, http.StatusBadRequest)
+		Respond(w, http.StatusBadRequest, map[string]string{"error": "Invalid thread ID"})
 		return
 	}
 
 	err = r.ParseMultipartForm(10 << 20) // 10 MB max
 	if err != nil {
 		logger.Error("failed to parse form", "error", err)
-		http.Error(w, `{"error": "Invalid form data"}`, http.StatusBadRequest)
+		Respond(w, http.StatusBadRequest, map[string]string{"error": "Invalid form data"})
 		return
 	}
 
@@ -69,7 +69,7 @@ func (h *CommentHandler) CreateComment(w http.ResponseWriter, r *http.Request) {
 		parsedID, err := utils.ParseUUID(parentIDStr)
 		if err != nil {
 			logger.Error("invalid parent_id", "error", err, "parent_id", parentIDStr)
-			http.Error(w, `{"error": "Invalid parent_id"}`, http.StatusBadRequest)
+			Respond(w, http.StatusBadRequest, map[string]string{"error": "Invalid parent_id"})
 			return
 		}
 		parentID = &parsedID
@@ -83,13 +83,13 @@ func (h *CommentHandler) CreateComment(w http.ResponseWriter, r *http.Request) {
 	sessionID, err := utils.ParseUUID(sessionIDStr)
 	if err != nil {
 		logger.Error("invalid session_id", "error", err)
-		http.Error(w, `{"error": "Invalid session_id"}`, http.StatusBadRequest)
+		Respond(w, http.StatusBadRequest, map[string]string{"error": "Invalid session_id"})
 		return
 	}
 
 	if content == "" {
 		logger.Warn("missing content", "thread_id", threadID)
-		http.Error(w, `{"error": "Content is required"}`, http.StatusBadRequest)
+		Respond(w, http.StatusBadRequest, map[string]string{"error": "Content is required"})
 		return
 	}
 
@@ -97,25 +97,24 @@ func (h *CommentHandler) CreateComment(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if err == errors.ErrThreadNotFound {
 			logger.Warn("thread not found", "thread_id", threadID)
-			http.Error(w, `{"error": "Thread not found"}`, http.StatusNotFound)
+			Respond(w, http.StatusNotFound, map[string]string{"error": "Thread not found"})
 			return
 		}
 		logger.Error("failed to create comment", "error", err, "thread_id", threadID)
-		http.Error(w, `{"error": "Failed to create comment"}`, http.StatusInternalServerError)
+		Respond(w, http.StatusInternalServerError, map[string]string{"error": "Failed to create comment"})
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
+	Respond(w, http.StatusCreated, comment)
 	if err := json.NewEncoder(w).Encode(comment); err != nil {
-		logger.Error("failed to encode response", "error", err)
+		Respond(w, http.StatusInternalServerError, map[string]string{"error": "Failed to encode response"})
 	}
 }
 
 func (h *CommentHandler) GetCommentsByThreadID(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		logger.Warn("invalid method", "method", r.Method, "path", r.URL.Path)
-		http.Error(w, `{"error": "Method not allowed"}`, http.StatusMethodNotAllowed)
+		Respond(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
 		return
 	}
 
@@ -123,7 +122,7 @@ func (h *CommentHandler) GetCommentsByThreadID(w http.ResponseWriter, r *http.Re
 	path := r.URL.Path
 	if !strings.HasPrefix(path, "/threads/") || !strings.Contains(path, "/comments") {
 		logger.Warn("invalid path", "path", path)
-		http.Error(w, `{"error": "Invalid path"}`, http.StatusBadRequest)
+		Respond(w, http.StatusBadRequest, map[string]string{"error": "Invalid path"})
 		return
 	}
 
@@ -131,14 +130,14 @@ func (h *CommentHandler) GetCommentsByThreadID(w http.ResponseWriter, r *http.Re
 	parts := strings.Split(strings.TrimPrefix(path, "/threads/"), "/")
 	if len(parts) < 2 || parts[1] != "comments" {
 		logger.Warn("invalid path format", "path", path)
-		http.Error(w, `{"error": "Invalid thread ID"}`, http.StatusBadRequest)
+		Respond(w, http.StatusBadRequest, map[string]string{"error": "Invalid path"})
 		return
 	}
 	threadIDStr := parts[0]
 	threadID, err := utils.ParseUUID(threadIDStr)
 	if err != nil {
 		logger.Error("invalid thread_id", "error", err, "thread_id", threadIDStr)
-		http.Error(w, `{"error": "Invalid thread ID"}`, http.StatusBadRequest)
+		Respond(w, http.StatusBadRequest, map[string]string{"error": "Invalid thread ID"})
 		return
 	}
 
@@ -146,11 +145,11 @@ func (h *CommentHandler) GetCommentsByThreadID(w http.ResponseWriter, r *http.Re
 	if err != nil {
 		if err == errors.ErrThreadNotFound {
 			logger.Warn("thread not found", "thread_id", threadID)
-			http.Error(w, `{"error": "Thread not found"}`, http.StatusNotFound)
+			Respond(w, http.StatusNotFound, map[string]string{"error": "Thread not found"})
 			return
 		}
 		logger.Error("failed to get comments", "error", err, "thread_id", threadID)
-		http.Error(w, `{"error": "Failed to get comments"}`, http.StatusInternalServerError)
+		Respond(w, http.StatusInternalServerError, map[string]string{"error": "Failed to get comments"})
 		return
 	}
 
