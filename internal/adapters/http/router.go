@@ -17,25 +17,22 @@ func NewRouter(
 	threadHandler := &ThreadHandler{threadSvc: threadSvc}
 	commentHandler := &CommentHandler{commentSvc: commentSvc}
 
-	// Сессии
+	// === Сессии ===
 	mux.HandleFunc("POST /session/name", sessionHandler.ChangeDisplayName)
 	mux.HandleFunc("GET /session/me", sessionHandler.GetSessionInfo)
 	mux.HandleFunc("GET /session/list", sessionHandler.ListSessions)
 
-	// Треды
-	mux.HandleFunc("POST /threads", threadHandler.CreateThread)			 
-	mux.HandleFunc("GET /threads/", threadHandler.GetThread)         // GET /threads/{id}
-	mux.HandleFunc("GET /threads", threadHandler.ListActiveThreads)		
-	mux.HandleFunc("GET /threads/all", threadHandler.ListAllThreads)  
+	// === Треды ===
+	mux.HandleFunc("POST /threads", threadHandler.CreateThread)
+	mux.HandleFunc("GET /threads/view/", threadHandler.GetThread) // GET /threads/view/{id}
+	mux.HandleFunc("GET /threads", threadHandler.ListActiveThreads)
+	mux.HandleFunc("GET /threads/all", threadHandler.ListAllThreads)
 
+	// === Комментарии ===
+	mux.HandleFunc("POST /threads/comment", commentHandler.CreateComment)
+	mux.HandleFunc("GET /threads/comment", commentHandler.GetCommentsByThreadID)
 
-	// POST /threads/{thread_id}/comments
-	// GET /threads/{thread_id}/comments 
-	// Комментарии
-	mux.HandleFunc("POST /threads/", commentHandler.CreateComment)
-	mux.HandleFunc("GET /threads/", commentHandler.GetCommentsByThreadID)
-
-	// Middleware
+	// === Middleware ===
 	handler := SessionMiddleware(sessionSvc, "1337session")(mux)
 
 	return handler

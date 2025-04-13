@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"io"
 	"time"
 
 	"1337b04rd/internal/app/common/logger"
@@ -12,16 +13,33 @@ import (
 
 type ThreadService struct {
 	threadRepo ports.ThreadPort
+	s3         ports.S3Port
 }
 
-func NewThreadService(threadRepo ports.ThreadPort) *ThreadService {
-	return &ThreadService{threadRepo: threadRepo}
+func NewThreadService(threadRepo ports.ThreadPort, s3 ports.S3Port) *ThreadService {
+	return &ThreadService{threadRepo: threadRepo, s3: s3}
 }
 
-func (s *ThreadService) CreateThread(ctx context.Context, title, content string, imageURL *string, sessionID uuidHelper.UUID) (*thread.Thread, error) {
+func (s *ThreadService) CreateThread(
+	ctx context.Context,
+	title, content string,
+	image io.Reader,
+	contentType string,
+	sessionID uuidHelper.UUID,
+) (*thread.Thread, error) {
 	if err := ctx.Err(); err != nil {
 		logger.Warn("context canceled in CreateThread", "error", err)
 		return nil, err
+	}
+
+	var imageURL *string
+	if image != nil {
+		url, err := s.s3.UploadImage(image, 0, contentType)
+		if err != nil {
+			logger.Error("failed to upload image", "error", err)
+			return nil, err
+		}
+		imageURL = &url
 	}
 
 	t, err := thread.NewThread(title, content, imageURL, sessionID)
@@ -34,7 +52,7 @@ func (s *ThreadService) CreateThread(ctx context.Context, title, content string,
 		return nil, err
 	}
 
-	logger.Info("Succesful! New thread created", t)
+	logger.Info("Succesful! New thread created", "thread", t)
 	return t, nil
 }
 
@@ -92,22 +110,22 @@ func (s *ThreadService) ListAllThreads(ctx context.Context) ([]*thread.Thread, e
 }
 
 func (s *ThreadService) CleanupExpiredThreads(ctx context.Context) error {
-    threads, err := s.threadRepo.ListActiveThreads(ctx)
-    if err != nil {
-			logger.Error("cannot get a list of active threads", "error", err)
-        return err
-    }
+	threads, err := s.threadRepo.ListActiveThreads(ctx)
+	if err != nil {
+		logger.Error("cannot get a list of active threads", "error", err)
+		return err
+	}
 
-    now := time.Now()
-    var lastErr error
-    for _, t := range threads {
-        if t.ShouldDelete(now) {
-            t.MarkAsDeleted()
-            if err := s.threadRepo.UpdateThread(ctx, t); err != nil {
-                lastErr = err
-                continue
-            }
-        }
-    }
-    return lastErr
+	now := time.Now()
+	var lastErr error
+	for _, t := range threads {
+		if t.ShouldDelete(now) {
+			t.MarkAsDeleted()
+			if err := s.threadRepo.UpdateThread(ctx, t); err != nil {
+				lastErr = err
+				continue
+			}
+		}
+	}
+	return lastErr
 }

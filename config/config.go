@@ -65,7 +65,7 @@ func Load() *Config {
 	cfg.S3.AccessKey = mustGet("S3_ACCESS_KEY")
 	cfg.S3.SecretKey = mustGet("S3_SECRET_KEY")
 	cfg.S3.BucketThreads = mustGet("S3_BUCKET_THREADS")
-	cfg.S3.BucketPosts = mustGet("S3_BUCKET_POSTS")
+	cfg.S3.BucketPosts = mustGet("S3_BUCKET_COMMENTS")
 	cfg.S3.Region = mustGet("S3_REGION")
 	cfg.S3.UseSSL = getBool("S3_USE_SSL")
 

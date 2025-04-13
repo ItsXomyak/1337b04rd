@@ -25,11 +25,11 @@ func (r *ThreadRepository) CreateThread(ctx context.Context, t *thread.Thread) e
 	}
 
 	_, err := r.db.ExecContext(ctx, CreateThread,
-		t.ID,
+		t.ID.String(),
 		t.Title,
 		t.Content,
 		t.ImageURL,
-		t.SessionID,
+		t.SessionID.String(),
 		t.CreatedAt,
 		t.LastCommented,
 		t.IsDeleted,
@@ -46,7 +46,7 @@ func (r *ThreadRepository) GetThreadByID(ctx context.Context, id uuidHelper.UUID
 		return nil, err
 	}
 
-	row := r.db.QueryRowContext(ctx, GetThreadByID, id)
+	row := r.db.QueryRowContext(ctx, GetThreadByID, id.String())
 	t, err := scanThread(row)
 	if err == sql.ErrNoRows {
 		return nil, errors.ErrThreadNotFound
@@ -64,11 +64,11 @@ func (r *ThreadRepository) UpdateThread(ctx context.Context, t *thread.Thread) e
 	}
 
 	_, err := r.db.ExecContext(ctx, UpdateThread,
-		t.ID,
+		t.ID.String(),
 		t.Title,
 		t.Content,
 		t.ImageURL,
-		t.SessionID,
+		t.SessionID.String(),
 		t.CreatedAt,
 		t.LastCommented,
 		t.IsDeleted,
@@ -145,21 +145,37 @@ func scanThread(scanner interface {
 	Scan(dest ...interface{}) error
 }) (*thread.Thread, error) {
 	t := &thread.Thread{}
-	var imageURL sql.NullString
-	var lastCommented sql.NullTime
+	var (
+		imageURL      sql.NullString
+		lastCommented sql.NullTime
+		idStr         string
+		sessionIDStr  string
+	)
 
 	err := scanner.Scan(
-		&t.ID,
+		&idStr,
 		&t.Title,
 		&t.Content,
 		&imageURL,
-		&t.SessionID,
+		&sessionIDStr,
 		&t.CreatedAt,
 		&lastCommented,
 		&t.IsDeleted,
 	)
 	if err != nil {
-		logger.Error("failed to scan thread", "error", err)
+		logger.Error("failed to scan thread row", "error", err)
+		return nil, err
+	}
+
+	t.ID, err = uuidHelper.ParseUUID(idStr)
+	if err != nil {
+		logger.Error("invalid UUID format for ID", "value", idStr, "error", err)
+		return nil, err
+	}
+
+	t.SessionID, err = uuidHelper.ParseUUID(sessionIDStr)
+	if err != nil {
+		logger.Error("invalid UUID format for session_id", "value", sessionIDStr, "error", err)
 		return nil, err
 	}
 

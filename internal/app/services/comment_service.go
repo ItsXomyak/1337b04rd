@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"io"
 
 	"1337b04rd/internal/app/common/logger"
 	"1337b04rd/internal/app/common/utils"
@@ -13,19 +14,39 @@ import (
 type CommentService struct {
 	commentRepo ports.CommentPort
 	threadRepo  ports.ThreadPort
+	s3          ports.S3Port
 }
 
-func NewCommentService(commentRepo ports.CommentPort, threadRepo ports.ThreadPort) *CommentService {
+func NewCommentService(commentRepo ports.CommentPort, threadRepo ports.ThreadPort, s3 ports.S3Port) *CommentService {
 	return &CommentService{
 		commentRepo: commentRepo,
 		threadRepo:  threadRepo,
+		s3:          s3,
 	}
 }
 
-func (s *CommentService) CreateComment(ctx context.Context,threadID uuidHelper.UUID, parentID *uuidHelper.UUID, content string, imageURL *string, sessionID uuidHelper.UUID) (*comment.Comment, error) {
+func (s *CommentService) CreateComment(
+	ctx context.Context,
+	threadID uuidHelper.UUID,
+	parentID *uuidHelper.UUID,
+	content string,
+	image io.Reader,
+	contentType string,
+	sessionID uuidHelper.UUID,
+) (*comment.Comment, error) {
 	if err := ctx.Err(); err != nil {
 		logger.Warn("context canceled in CreateComment", "error", err)
 		return nil, err
+	}
+
+	var imageURL *string
+	if image != nil {
+		url, err := s.s3.UploadImage(image, 0, contentType)
+		if err != nil {
+			logger.Error("failed to upload comment image", "error", err)
+			return nil, err
+		}
+		imageURL = &url
 	}
 
 	c, err := comment.NewComment(threadID, parentID, content, imageURL, sessionID)
@@ -33,6 +54,7 @@ func (s *CommentService) CreateComment(ctx context.Context,threadID uuidHelper.U
 		logger.Error("cannot to create new comment", "error", err)
 		return nil, err
 	}
+
 	if err := s.commentRepo.CreateComment(ctx, c); err != nil {
 		logger.Error("cannot to create comment", "error", err)
 		return nil, err
@@ -43,6 +65,7 @@ func (s *CommentService) CreateComment(ctx context.Context,threadID uuidHelper.U
 		logger.Error("cannot to get thread by ID", "error", err)
 		return nil, err
 	}
+
 	if err := s.threadRepo.UpdateThread(ctx, t); err != nil {
 		logger.Error("cannot to update thread", "error", err)
 		return nil, err

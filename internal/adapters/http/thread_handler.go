@@ -2,6 +2,7 @@ package http
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 	"strings"
 
@@ -22,46 +23,51 @@ func NewThreadHandler(threadSvc *services.ThreadService) *ThreadHandler {
 }
 
 func (h *ThreadHandler) CreateThread(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	err := r.ParseMultipartForm(10 << 20)
-	if err != nil {
-		logger.Error("failed to parse form", "error", err)
-		Respond(w, http.StatusBadRequest, map[string]string{"error": "Invalid form data"})
+	sess, ok := GetSessionFromContext(r.Context())
+	if !ok {
+		logger.Warn("session not found in CreateThread")
+		Respond(w, http.StatusUnauthorized, map[string]string{"error": "session not found"})
 		return
 	}
 
-	title := r.FormValue("title")
-	content := r.FormValue("content")
-	sessionIDStr := r.FormValue("session_id")
-	imageURL := r.FormValue("image_url")
-	var imageURLPtr *string
-	if imageURL != "" {
-		imageURLPtr = &imageURL
-	}
-
-	sessionID, err := utils.ParseUUID(sessionIDStr)
-	if err != nil {
-		logger.Error("invalid session_id", "error", err)
-		Respond(w, http.StatusBadRequest, map[string]string{"error": "Invalid session ID"})
+	if err := r.ParseMultipartForm(10 << 20); err != nil {
+		logger.Error("failed to parse multipart form", "error", err)
+		Respond(w, http.StatusBadRequest, map[string]string{"error": "invalid form data"})
 		return
 	}
+
+	title := strings.TrimSpace(r.FormValue("title"))
+	content := strings.TrimSpace(r.FormValue("content"))
 
 	if title == "" || content == "" {
-		logger.Warn("missing required fields", "title", title, "content", content)
-		Respond(w, http.StatusBadRequest, map[string]string{"error": "Title and content are required"})
+		Respond(w, http.StatusBadRequest, map[string]string{"error": "title and content are required"})
 		return
 	}
 
-	thread, err := h.threadSvc.CreateThread(ctx, title, content, imageURLPtr, sessionID)
+	var file io.Reader
+	var contentType string
+
+	imageHeader, fileHeader, err := r.FormFile("image")
+	if err == nil {
+		defer imageHeader.Close()
+		contentType = fileHeader.Header.Get("Content-Type")
+		file = imageHeader
+	} else if err != http.ErrMissingFile {
+		logger.Error("error retrieving file from form", "error", err)
+		Respond(w, http.StatusBadRequest, map[string]string{"error": "invalid image upload"})
+		return
+	}
+
+	t, err := h.threadSvc.CreateThread(r.Context(), title, content, file, contentType, sess.ID)
 	if err != nil {
 		logger.Error("failed to create thread", "error", err)
-		Respond(w, http.StatusInternalServerError, map[string]string{"error": "Failed to create thread"})
+		Respond(w, http.StatusInternalServerError, map[string]string{"error": "could not create thread"})
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(thread)
+	Respond(w, http.StatusCreated, map[string]string{
+		"thread_id": t.ID.String(),
+	})
 }
 
 func (h *ThreadHandler) GetThread(w http.ResponseWriter, r *http.Request) {
@@ -73,13 +79,13 @@ func (h *ThreadHandler) GetThread(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 	path := r.URL.Path
-	if !strings.HasPrefix(path, "/threads/") {
+	if !strings.HasPrefix(path, "/threads/view/") {
 		logger.Warn("invalid path", "path", path)
 		Respond(w, http.StatusNotFound, map[string]string{"error": "Not found"})
 		return
 	}
 
-	idStr := strings.TrimPrefix(path, "/threads/")
+	idStr := strings.TrimPrefix(path, "/threads/view/")
 	id, err := utils.ParseUUID(idStr)
 	if err != nil {
 		logger.Error("invalid thread id", "error", err, "id", idStr)
