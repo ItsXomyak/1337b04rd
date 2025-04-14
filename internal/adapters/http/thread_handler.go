@@ -51,6 +51,7 @@ func (h *ThreadHandler) CreateThread(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		defer imageHeader.Close()
 		contentType = fileHeader.Header.Get("Content-Type")
+		logger.Debug("received uploaded file", "contentType", contentType)
 		file = imageHeader
 	} else if err != http.ErrMissingFile {
 		logger.Error("error retrieving file from form", "error", err)

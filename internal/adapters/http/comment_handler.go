@@ -35,7 +35,6 @@ func (h *CommentHandler) CreateComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Из формы
 	threadIDStr := r.FormValue("thread_id")
 	content := r.FormValue("content")
 	sessionIDStr := r.FormValue("session_id")

@@ -39,21 +39,32 @@ func Run() {
 	httpClient := &http.Client{}
 	avatarClient := rickmorty.NewClient(cfg.AvatarAPI.BaseURL, httpClient)
 
-	s3Client, err := s3.NewS3Client(
+	s3ThreadsClient, err := s3.NewS3Client(
 		cfg.S3.Endpoint,
 		cfg.S3.AccessKey,
 		cfg.S3.SecretKey,
 		cfg.S3.BucketThreads,
 	)
 	if err != nil {
-		logger.Error("failed to initialize S3 client", "error", err)
+		logger.Error("failed to create S3 client for threads", "error", err)
+		return
+	}
+
+	s3CommentsClient, err := s3.NewS3Client(
+		cfg.S3.Endpoint,
+		cfg.S3.AccessKey,
+		cfg.S3.SecretKey,
+		cfg.S3.BucketComments,
+	)
+	if err != nil {
+		logger.Error("failed to create S3 client for comments", "error", err)
 		return
 	}
 
 	avatarSvc := services.NewAvatarService(avatarClient)
 	sessionSvc := services.NewSessionService(sessionRepo, avatarSvc, cfg.Session.Duration)
-	threadSvc := services.NewThreadService(threadRepo, s3Client)
-	commentSvc := services.NewCommentService(commentRepo, threadRepo, s3Client)
+	threadSvc := services.NewThreadService(threadRepo, s3ThreadsClient)
+	commentSvc := services.NewCommentService(commentRepo, threadRepo, s3CommentsClient)
 
 	router := httpadapter.NewRouter(sessionSvc, avatarSvc, threadSvc, commentSvc)
 

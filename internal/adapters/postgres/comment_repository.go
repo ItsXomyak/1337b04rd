@@ -26,12 +26,12 @@ func (r *CommentRepository) CreateComment(ctx context.Context, c *comment.Commen
 	}
 
 	_, err := r.db.ExecContext(ctx, CreateComment,
-		c.ID,
-		c.ThreadID,
-		c.ParentCommentID,
+		c.ID.String(),
+		c.ThreadID.String(),
+		nilIfNilUUID(c.ParentCommentID),
 		c.Content,
 		c.ImageURL,
-		c.SessionID,
+		c.SessionID.String(),
 		c.CreatedAt,
 	)
 	if err != nil {
@@ -104,4 +104,11 @@ func scanComment(scanner interface {
 	}
 
 	return c, nil
+}
+
+func nilIfNilUUID(u *utils.UUID) interface{} {
+	if u == nil {
+		return nil
+	}
+	return u.String()
 }

@@ -3,6 +3,7 @@ package utils
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"strings"
 )
@@ -27,7 +28,6 @@ func (u UUID) String() string {
 		u[0:4], u[4:6], u[6:8], u[8:10], u[10:])
 }
 
-// чек если все байты равны нулю
 func (u UUID) IsZero() bool {
 	for _, b := range u[:] {
 		if b != 0 {
@@ -51,4 +51,21 @@ func ParseUUID(s string) (UUID, error) {
 	var uuid UUID
 	copy(uuid[:], bytes)
 	return uuid, nil
+}
+
+func (u UUID) MarshalJSON() ([]byte, error) {
+	return json.Marshal(u.String())
+}
+
+func (u *UUID) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
+	}
+	parsed, err := ParseUUID(s)
+	if err != nil {
+		return err
+	}
+	*u = parsed
+	return nil
 }
