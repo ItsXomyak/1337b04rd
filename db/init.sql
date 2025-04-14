@@ -17,7 +17,7 @@ CREATE TABLE threads (
     id UUID PRIMARY KEY,
     title TEXT NOT NULL,
     content TEXT NOT NULL,
-    image_url TEXT,
+    image_url TEXT[],
     session_id UUID NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     last_commented TIMESTAMP,
@@ -33,7 +33,7 @@ CREATE TABLE comments (
     thread_id UUID NOT NULL REFERENCES threads(id) ON DELETE CASCADE,
     parent_comment_id UUID REFERENCES comments(id) ON DELETE SET NULL,
     content TEXT NOT NULL,
-    image_url TEXT,
+    image_url TEXT[],
     session_id UUID NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
 

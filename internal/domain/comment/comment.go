@@ -12,13 +12,13 @@ type Comment struct {
 	ThreadID        uuidHelper.UUID
 	ParentCommentID *uuidHelper.UUID
 	Content         string
-	ImageURL        *string
+	ImageURLs       []string
 	SessionID       uuidHelper.UUID
 	CreatedAt       time.Time
 	IsDeleted       bool
 }
 
-func NewComment(threadID uuidHelper.UUID, parentCommentID *uuidHelper.UUID, content string, imageURL *string, sessionID uuidHelper.UUID) (*Comment, error) {
+func NewComment(threadID uuidHelper.UUID, parentCommentID *uuidHelper.UUID, content string, imageURLs []string, sessionID uuidHelper.UUID) (*Comment, error) {
 	if threadID.IsZero() {
 		return nil, ErrInvalidThreadID
 	}
@@ -35,11 +35,11 @@ func NewComment(threadID uuidHelper.UUID, parentCommentID *uuidHelper.UUID, cont
 	}
 
 	return &Comment{
-		ID:              id, 
+		ID:              id,
 		ThreadID:        threadID,
 		ParentCommentID: parentCommentID,
 		Content:         content,
-		ImageURL:        imageURL,
+		ImageURLs:       imageURLs,
 		SessionID:       sessionID,
 		CreatedAt:       time.Now(),
 		IsDeleted:       false,

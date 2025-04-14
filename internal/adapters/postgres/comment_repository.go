@@ -7,6 +7,8 @@ import (
 	"1337b04rd/internal/app/common/logger"
 	"1337b04rd/internal/app/common/utils"
 	"1337b04rd/internal/domain/comment"
+
+	"github.com/lib/pq"
 )
 
 type CommentRepository struct {
@@ -30,7 +32,7 @@ func (r *CommentRepository) CreateComment(ctx context.Context, c *comment.Commen
 		c.ThreadID.String(),
 		nilIfNilUUID(c.ParentCommentID),
 		c.Content,
-		c.ImageURL,
+		pq.Array(c.ImageURLs),
 		c.SessionID.String(),
 		c.CreatedAt,
 	)
@@ -43,13 +45,13 @@ func (r *CommentRepository) CreateComment(ctx context.Context, c *comment.Commen
 
 func (r *CommentRepository) GetCommentsByThreadID(ctx context.Context, threadID utils.UUID) ([]*comment.Comment, error) {
 	if err := ctx.Err(); err != nil {
-		logger.Error("context error while getting comments", "error", err, "thread_id", threadID)
+		logger.Error("context error while getting comments", "error", err, "thread_id", threadID.String())
 		return nil, err
 	}
 
-	rows, err := r.db.QueryContext(ctx, GetCommentsByThreadID, threadID)
+	rows, err := r.db.QueryContext(ctx, GetCommentsByThreadID, threadID.String())
 	if err != nil {
-		logger.Error("failed to query comments by thread id", "error", err, "thread_id", threadID)
+		logger.Error("failed to query comments by thread id", "error", err, "thread_id", threadID.String())
 		return nil, err
 	}
 	defer rows.Close()
@@ -58,7 +60,7 @@ func (r *CommentRepository) GetCommentsByThreadID(ctx context.Context, threadID 
 	for rows.Next() {
 		c, err := scanComment(rows)
 		if err != nil {
-			logger.Error("failed to scan comment", "error", err, "thread_id", threadID)
+			logger.Error("failed to scan comment", "error", err, "thread_id", threadID.String())
 			return nil, err
 		}
 		comments = append(comments, c)
@@ -75,15 +77,17 @@ func scanComment(scanner interface {
 	Scan(dest ...interface{}) error
 }) (*comment.Comment, error) {
 	c := &comment.Comment{}
-	var imageURL, parentID sql.NullString
+	var idStr, threadIDStr, sessionIDStr string
+	var parentID sql.NullString
+	var imageURLs pq.StringArray
 
 	err := scanner.Scan(
-		&c.ID,
-		&c.ThreadID,
+		&idStr,
+		&threadIDStr,
 		&parentID,
 		&c.Content,
-		&imageURL,
-		&c.SessionID,
+		&imageURLs,
+		&sessionIDStr,
 		&c.CreatedAt,
 	)
 	if err != nil {
@@ -91,9 +95,24 @@ func scanComment(scanner interface {
 		return nil, err
 	}
 
-	if imageURL.Valid {
-		c.ImageURL = &imageURL.String
+	c.ID, err = utils.ParseUUID(idStr)
+	if err != nil {
+		logger.Error("failed to parse comment id", "error", err)
+		return nil, err
 	}
+
+	c.ThreadID, err = utils.ParseUUID(threadIDStr)
+	if err != nil {
+		logger.Error("failed to parse thread id", "error", err)
+		return nil, err
+	}
+
+	c.SessionID, err = utils.ParseUUID(sessionIDStr)
+	if err != nil {
+		logger.Error("failed to parse session id", "error", err)
+		return nil, err
+	}
+
 	if parentID.Valid {
 		parsedID, err := utils.ParseUUID(parentID.String)
 		if err != nil {
@@ -103,6 +122,7 @@ func scanComment(scanner interface {
 		c.ParentCommentID = &parsedID
 	}
 
+	c.ImageURLs = []string(imageURLs)
 	return c, nil
 }
 

@@ -1,8 +1,11 @@
 package services
 
 import (
+	"bytes"
 	"context"
+	"fmt"
 	"io"
+	"mime/multipart"
 
 	"1337b04rd/internal/app/common/logger"
 	"1337b04rd/internal/app/common/utils"
@@ -16,7 +19,11 @@ type CommentService struct {
 	s3          ports.S3Port
 }
 
-func NewCommentService(commentRepo ports.CommentPort, threadRepo ports.ThreadPort, s3 ports.S3Port) *CommentService {
+func NewCommentService(
+	commentRepo ports.CommentPort,
+	threadRepo ports.ThreadPort,
+	s3 ports.S3Port,
+) *CommentService {
 	return &CommentService{
 		commentRepo: commentRepo,
 		threadRepo:  threadRepo,
@@ -29,8 +36,8 @@ func (s *CommentService) CreateComment(
 	threadID utils.UUID,
 	parentID *utils.UUID,
 	content string,
-	image io.Reader,
-	contentType string,
+	files map[string]io.Reader,
+	contentTypes map[string]string,
 	sessionID utils.UUID,
 ) (*comment.Comment, error) {
 	if err := ctx.Err(); err != nil {
@@ -38,44 +45,74 @@ func (s *CommentService) CreateComment(
 		return nil, err
 	}
 
-	var imageURL *string
-	if image != nil {
-		files := map[string]io.Reader{"image": image}
-		types := map[string]string{"image": contentType}
-
-		urls, err := s.s3.UploadImages(files, types)
+	var imageURLs []string
+	if len(files) > 0 {
+		urls, err := s.s3.UploadImages(files, contentTypes)
 		if err != nil {
-			logger.Error("failed to upload comment image", "error", err)
+			logger.Error("failed to upload comment images", "error", err)
 			return nil, err
 		}
-		url := urls["image"]
-		imageURL = &url
+		for _, url := range urls {
+			imageURLs = append(imageURLs, url)
+		}
 	}
 
-	c, err := comment.NewComment(threadID, parentID, content, imageURL, sessionID)
+	c, err := comment.NewComment(threadID, parentID, content, imageURLs, sessionID)
 	if err != nil {
-		logger.Error("cannot to create new comment", "error", err)
+		logger.Error("cannot create new comment", "error", err)
 		return nil, err
 	}
 
 	if err := s.commentRepo.CreateComment(ctx, c); err != nil {
-		logger.Error("cannot to create comment", "error", err)
+		logger.Error("cannot save comment", "error", err)
 		return nil, err
 	}
 
 	t, err := s.threadRepo.GetThreadByID(ctx, threadID)
 	if err != nil {
-		logger.Error("cannot to get thread by ID", "error", err)
+		logger.Error("cannot fetch thread", "error", err)
 		return nil, err
 	}
 
 	if err := s.threadRepo.UpdateThread(ctx, t); err != nil {
-		logger.Error("cannot to update thread", "error", err)
+		logger.Error("cannot update thread", "error", err)
 		return nil, err
 	}
 
-	logger.Info("a new comment has been created!", "comment", c)
+	logger.Info("comment created", "comment", c)
 	return c, nil
+}
+
+func (s *CommentService) PrepareFilesFromMultipart(form *multipart.Form) (map[string]io.Reader, map[string]string, error) {
+	files := make(map[string]io.Reader)
+	contentTypes := make(map[string]string)
+	counter := 0
+
+	if form == nil || form.File == nil {
+		return files, contentTypes, nil
+	}
+
+	for _, fileHeaders := range form.File {
+		for _, fh := range fileHeaders {
+			file, err := fh.Open()
+			if err != nil {
+				return nil, nil, fmt.Errorf("failed to open file: %w", err)
+			}
+			defer file.Close()
+
+			buf := new(bytes.Buffer)
+			if _, err := io.Copy(buf, file); err != nil {
+				return nil, nil, fmt.Errorf("failed to buffer file: %w", err)
+			}
+
+			key := fmt.Sprintf("file_%d", counter)
+			files[key] = bytes.NewReader(buf.Bytes())
+			contentTypes[key] = fh.Header.Get("Content-Type")
+			counter++
+		}
+	}
+
+	return files, contentTypes, nil
 }
 
 func (s *CommentService) GetCommentsByThreadID(ctx context.Context, threadID utils.UUID) ([]*comment.Comment, error) {

@@ -8,6 +8,8 @@ import (
 	uuidHelper "1337b04rd/internal/app/common/utils"
 	"1337b04rd/internal/domain/errors"
 	"1337b04rd/internal/domain/thread"
+
+	"github.com/lib/pq"
 )
 
 type ThreadRepository struct {
@@ -28,12 +30,13 @@ func (r *ThreadRepository) CreateThread(ctx context.Context, t *thread.Thread) e
 		t.ID.String(),
 		t.Title,
 		t.Content,
-		t.ImageURL,
+		pq.Array(t.ImageURLs),
 		t.SessionID.String(),
 		t.CreatedAt,
 		t.LastCommented,
 		t.IsDeleted,
 	)
+
 	if err != nil {
 		logger.Error("failed to execute create thread query", "error", err, "thread_id", t.ID)
 	}
@@ -67,12 +70,13 @@ func (r *ThreadRepository) UpdateThread(ctx context.Context, t *thread.Thread) e
 		t.ID.String(),
 		t.Title,
 		t.Content,
-		t.ImageURL,
+		pq.Array(t.ImageURLs),
 		t.SessionID.String(),
 		t.CreatedAt,
 		t.LastCommented,
 		t.IsDeleted,
 	)
+
 	if err != nil {
 		logger.Error("failed to execute update thread query", "error", err, "thread_id", t.ID)
 	}
@@ -146,7 +150,7 @@ func scanThread(scanner interface {
 }) (*thread.Thread, error) {
 	t := &thread.Thread{}
 	var (
-		imageURL      sql.NullString
+		imageURLs     pq.StringArray
 		lastCommented sql.NullTime
 		idStr         string
 		sessionIDStr  string
@@ -156,7 +160,7 @@ func scanThread(scanner interface {
 		&idStr,
 		&t.Title,
 		&t.Content,
-		&imageURL,
+		&imageURLs,
 		&sessionIDStr,
 		&t.CreatedAt,
 		&lastCommented,
@@ -179,12 +183,10 @@ func scanThread(scanner interface {
 		return nil, err
 	}
 
-	if imageURL.Valid {
-		t.ImageURL = &imageURL.String
-	}
 	if lastCommented.Valid {
 		t.LastCommented = &lastCommented.Time
 	}
 
+	t.ImageURLs = []string(imageURLs)
 	return t, nil
 }

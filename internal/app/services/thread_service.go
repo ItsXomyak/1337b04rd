@@ -1,8 +1,11 @@
 package services
 
 import (
+	"bytes"
 	"context"
+	"fmt"
 	"io"
+	"mime/multipart"
 	"time"
 
 	"1337b04rd/internal/app/common/logger"
@@ -23,8 +26,8 @@ func NewThreadService(threadRepo ports.ThreadPort, s3 ports.S3Port) *ThreadServi
 func (s *ThreadService) CreateThread(
 	ctx context.Context,
 	title, content string,
-	image io.Reader,
-	contentType string,
+	files map[string]io.Reader,
+	contentTypes map[string]string,
 	sessionID uuidHelper.UUID,
 ) (*thread.Thread, error) {
 	if err := ctx.Err(); err != nil {
@@ -32,21 +35,21 @@ func (s *ThreadService) CreateThread(
 		return nil, err
 	}
 
-	var imageURL *string
-	if image != nil {
-		files := map[string]io.Reader{"image": image}
-		types := map[string]string{"image": contentType}
-
-		urls, err := s.s3.UploadImages(files, types)
+	var imageURLs []string
+	if len(files) > 0 {
+		urls, err := s.s3.UploadImages(files, contentTypes)
 		if err != nil {
-			logger.Error("failed to upload thread image", "error", err)
+			logger.Error("failed to upload thread images", "error", err)
 			return nil, err
 		}
-		url := urls["image"]
-		imageURL = &url
+
+		// собираем в слайс
+		for _, url := range urls {
+			imageURLs = append(imageURLs, url)
+		}
 	}
 
-	t, err := thread.NewThread(title, content, imageURL, sessionID)
+	t, err := thread.NewThread(title, content, imageURLs, sessionID)
 	if err != nil {
 		return nil, err
 	}
@@ -56,8 +59,40 @@ func (s *ThreadService) CreateThread(
 		return nil, err
 	}
 
-	logger.Info("Succesful! New thread created", "thread", t)
+	logger.Info("Successful! New thread created", "thread", t)
 	return t, nil
+}
+
+func (s *ThreadService) PrepareFilesFromMultipart(form *multipart.Form) (map[string]io.Reader, map[string]string, error) {
+	files := make(map[string]io.Reader)
+	contentTypes := make(map[string]string)
+	counter := 0
+
+	if form == nil || form.File == nil {
+		return files, contentTypes, nil
+	}
+
+	for _, fileHeaders := range form.File {
+		for _, fh := range fileHeaders {
+			file, err := fh.Open()
+			if err != nil {
+				return nil, nil, fmt.Errorf("failed to open file: %w", err)
+			}
+			defer file.Close()
+
+			buf := new(bytes.Buffer)
+			if _, err := io.Copy(buf, file); err != nil {
+				return nil, nil, fmt.Errorf("failed to buffer file: %w", err)
+			}
+
+			key := fmt.Sprintf("file_%d", counter)
+			files[key] = bytes.NewReader(buf.Bytes())
+			contentTypes[key] = fh.Header.Get("Content-Type")
+			counter++
+		}
+	}
+
+	return files, contentTypes, nil
 }
 
 func (s *ThreadService) GetThreadByID(ctx context.Context, id uuidHelper.UUID) (*thread.Thread, error) {

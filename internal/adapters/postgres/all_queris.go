@@ -1,6 +1,5 @@
 package postgres
 
-
 // thread repo
 const (
 	GetThreadByID = `

@@ -11,14 +11,14 @@ type Thread struct {
 	ID            uuidHelper.UUID
 	Title         string
 	Content       string
-	ImageURL      *string
+	ImageURLs     []string
 	SessionID     uuidHelper.UUID
 	CreatedAt     time.Time
 	LastCommented *time.Time
 	IsDeleted     bool
 }
 
-func NewThread(title, content string, imageURL *string, sessionID uuidHelper.UUID) (*Thread, error) {
+func NewThread(title, content string, imageURLs []string, sessionID uuidHelper.UUID) (*Thread, error) {
 	if title == "" {
 		return nil, ErrEmptyTitle
 	}
@@ -36,10 +36,10 @@ func NewThread(title, content string, imageURL *string, sessionID uuidHelper.UUI
 
 	now := time.Now()
 	return &Thread{
-		ID:            id, 
+		ID:            id,
 		Title:         title,
 		Content:       content,
-		ImageURL:      imageURL,
+		ImageURLs:     imageURLs,
 		SessionID:     sessionID,
 		CreatedAt:     now,
 		LastCommented: nil,

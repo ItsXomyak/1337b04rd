@@ -2,7 +2,6 @@ package http
 
 import (
 	"encoding/json"
-	"io"
 	"net/http"
 	"strings"
 
@@ -30,7 +29,7 @@ func (h *ThreadHandler) CreateThread(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := r.ParseMultipartForm(10 << 20); err != nil {
+	if err := r.ParseMultipartForm(20 << 20); err != nil {
 		logger.Error("failed to parse multipart form", "error", err)
 		Respond(w, http.StatusBadRequest, map[string]string{"error": "invalid form data"})
 		return
@@ -44,22 +43,14 @@ func (h *ThreadHandler) CreateThread(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var file io.Reader
-	var contentType string
-
-	imageHeader, fileHeader, err := r.FormFile("image")
-	if err == nil {
-		defer imageHeader.Close()
-		contentType = fileHeader.Header.Get("Content-Type")
-		logger.Debug("received uploaded file", "contentType", contentType)
-		file = imageHeader
-	} else if err != http.ErrMissingFile {
-		logger.Error("error retrieving file from form", "error", err)
-		Respond(w, http.StatusBadRequest, map[string]string{"error": "invalid image upload"})
+	files, contentTypes, err := h.threadSvc.PrepareFilesFromMultipart(r.MultipartForm)
+	if err != nil {
+		logger.Error("failed to process files", "error", err)
+		Respond(w, http.StatusBadRequest, map[string]string{"error": "failed to process images"})
 		return
 	}
 
-	t, err := h.threadSvc.CreateThread(r.Context(), title, content, file, contentType, sess.ID)
+	thread, err := h.threadSvc.CreateThread(r.Context(), title, content, files, contentTypes, sess.ID)
 	if err != nil {
 		logger.Error("failed to create thread", "error", err)
 		Respond(w, http.StatusInternalServerError, map[string]string{"error": "could not create thread"})
@@ -67,7 +58,7 @@ func (h *ThreadHandler) CreateThread(w http.ResponseWriter, r *http.Request) {
 	}
 
 	Respond(w, http.StatusCreated, map[string]string{
-		"thread_id": t.ID.String(),
+		"thread_id": thread.ID.String(),
 	})
 }
 

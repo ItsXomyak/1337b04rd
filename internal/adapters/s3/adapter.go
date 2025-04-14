@@ -27,3 +27,14 @@ func (a *Adapter) UploadImages(files map[string]io.Reader, contentTypes map[stri
 func (a *Adapter) DeleteFile(fileName string) error {
 	return a.client.DeleteFile(fileName)
 }
+
+func (a *Adapter) UploadImage(file io.Reader, size int64, contentType string) (string, error) {
+	files := map[string]io.Reader{"image": file}
+	contentTypes := map[string]string{"image": contentType}
+
+	urls, err := a.client.UploadImagesParallel(files, contentTypes)
+	if err != nil {
+		return "", err
+	}
+	return urls["image"], nil
+}

@@ -1,10 +1,12 @@
 package cmd
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"net/http"
 	"os"
+	"time"
 
 	"1337b04rd/config"
 	httpadapter "1337b04rd/internal/adapters/http"
@@ -16,12 +18,15 @@ import (
 )
 
 func Run() {
+	// CLI flags
 	port := flag.Int("port", 8080, "Port number")
 	flag.Parse()
 
+	// Load config and init logger
 	cfg := config.Load()
 	logger.Init(cfg.AppEnv)
 
+	// Connect to PostgreSQL
 	db, err := postgres.NewPostgresDB(cfg)
 	if err != nil {
 		logger.Error("failed to connect to DB", "err", err)
@@ -30,15 +35,16 @@ func Run() {
 	defer db.Close()
 	logger.Info("connected to PostgreSQL", "host", cfg.DB.Host, "db", cfg.DB.Name)
 
-	// Repos
+	// Repositories
 	sessionRepo := postgres.NewSessionRepository(db)
 	threadRepo := postgres.NewThreadRepository(db)
 	commentRepo := postgres.NewCommentRepository(db)
 
-	// Clients
+	// External HTTP clients
 	httpClient := &http.Client{}
 	avatarClient := rickmorty.NewClient(cfg.AvatarAPI.BaseURL, httpClient)
 
+	// S3 clients for threads and comments
 	s3ThreadsClient, err := s3.NewS3Client(
 		cfg.S3.Endpoint,
 		cfg.S3.AccessKey,
@@ -61,12 +67,31 @@ func Run() {
 		return
 	}
 
+	// Services
 	avatarSvc := services.NewAvatarService(avatarClient)
 	sessionSvc := services.NewSessionService(sessionRepo, avatarSvc, cfg.Session.Duration)
-	threadSvc := services.NewThreadService(threadRepo, s3.NewAdapter(s3ThreadsClient))
-	commentSvc := services.NewCommentService(commentRepo, threadRepo, s3.NewAdapter(s3CommentsClient))
 
+	threadS3Adapter := s3.NewAdapter(s3ThreadsClient)
+	commentS3Adapter := s3.NewAdapter(s3CommentsClient)
+
+	threadSvc := services.NewThreadService(threadRepo, threadS3Adapter)
+	commentSvc := services.NewCommentService(commentRepo, threadRepo, commentS3Adapter)
+
+	// HTTP router
 	router := httpadapter.NewRouter(sessionSvc, avatarSvc, threadSvc, commentSvc)
+
+	// запуск фонового удаления
+	go func() {
+		ticker := time.NewTicker(1 * time.Minute)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			ctx := context.Background()
+			if err := threadSvc.CleanupExpiredThreads(ctx); err != nil {
+				logger.Error("thread cleanup failed", "error", err)
+			}
+		}
+	}()
 
 	addr := fmt.Sprintf(":%d", *port)
 	logger.Info("starting server", "address", addr)

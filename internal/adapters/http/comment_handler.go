@@ -2,9 +2,9 @@ package http
 
 import (
 	"encoding/json"
-	"io"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"1337b04rd/internal/app/common/logger"
 	"1337b04rd/internal/app/common/utils"
@@ -36,7 +36,7 @@ func (h *CommentHandler) CreateComment(w http.ResponseWriter, r *http.Request) {
 	}
 
 	threadIDStr := r.FormValue("thread_id")
-	content := r.FormValue("content")
+	content := strings.TrimSpace(r.FormValue("content"))
 	sessionIDStr := r.FormValue("session_id")
 	parentIDStr := r.FormValue("parent_id")
 
@@ -67,20 +67,14 @@ func (h *CommentHandler) CreateComment(w http.ResponseWriter, r *http.Request) {
 		parentID = &parsedID
 	}
 
-	var file io.Reader
-	var contentType string
-	imageHeader, fileHeader, err := r.FormFile("image")
-	if err == nil {
-		defer imageHeader.Close()
-		file = imageHeader
-		contentType = fileHeader.Header.Get("Content-Type")
-	} else if err != http.ErrMissingFile {
-		logger.Error("error retrieving image file", "error", err)
+	files, contentTypes, err := h.commentSvc.PrepareFilesFromMultipart(r.MultipartForm)
+	if err != nil {
+		logger.Error("failed to process uploaded files", "error", err)
 		Respond(w, http.StatusBadRequest, map[string]string{"error": "Invalid image upload"})
 		return
 	}
 
-	comment, err := h.commentSvc.CreateComment(r.Context(), threadID, parentID, content, file, contentType, sessionID)
+	comment, err := h.commentSvc.CreateComment(r.Context(), threadID, parentID, content, files, contentTypes, sessionID)
 	if err != nil {
 		if err == errors.ErrThreadNotFound {
 			Respond(w, http.StatusNotFound, map[string]string{"error": "Thread not found"})
