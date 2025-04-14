@@ -87,11 +87,14 @@ func (s *S3Client) UploadImage(file io.Reader, size int64, contentType string) (
 }
 
 func (s *S3Client) UploadImagesParallel(files map[string]io.Reader, contentTypes map[string]string) (map[string]string, error) {
-	var wg sync.WaitGroup
-	mu := sync.Mutex{}
+	var (
+		wg      sync.WaitGroup
+		results sync.Map
+		errs    = make(chan error, len(files))
+	)
 
-	results := make(map[string]string)
-	errs := make(chan error, len(files))
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
 
 	for fileName, file := range files {
 		contentType := contentTypes[fileName]
@@ -102,49 +105,60 @@ func (s *S3Client) UploadImagesParallel(files map[string]io.Reader, contentTypes
 
 			data, err := io.ReadAll(reader)
 			if err != nil {
-				errs <- fmt.Errorf("failed to read file %s: %w", name, err)
+				errs <- fmt.Errorf("read error (%s): %w", name, err)
 				return
 			}
+
 			buf := bytes.NewReader(data)
 
-			exts, _ := mime.ExtensionsByType(ctype)
 			ext := ""
-			if len(exts) > 0 {
+			if exts, _ := mime.ExtensionsByType(ctype); len(exts) > 0 {
 				ext = exts[0]
 			}
 
 			fileID, err := uuidHelper.NewUUID()
 			if err != nil {
-				errs <- fmt.Errorf("failed to generate UUID for %s: %w", name, err)
+				errs <- fmt.Errorf("uuid error (%s): %w", name, err)
 				return
 			}
 			uniqueName := fmt.Sprintf("%s%s", fileID.String(), ext)
 
-			logger.Debug("uploading to S3 (parallel)", "originalName", name, "generatedName", uniqueName, "contentType", ctype, "size", len(data))
+			logger.Debug("S3 upload (parallel)", "original", name, "generated", uniqueName, "contentType", ctype, "size", len(data))
 
-			_, err = s.client.PutObject(context.Background(), s.bucket, uniqueName, buf, int64(len(data)), minio.PutObjectOptions{
+			_, err = s.client.PutObject(ctx, s.bucket, uniqueName, buf, int64(len(data)), minio.PutObjectOptions{
 				ContentType: ctype,
 			})
 			if err != nil {
-				errs <- fmt.Errorf("failed to upload %s: %w", name, err)
+				errs <- fmt.Errorf("upload error (%s): %w", name, err)
 				return
 			}
 
 			url := s.GetImageURL(uniqueName)
-			mu.Lock()
-			results[name] = url
-			mu.Unlock()
+			results.Store(name, url)
 		}(fileName, file, contentType)
 	}
 
 	wg.Wait()
 	close(errs)
 
-	if len(errs) > 0 {
-		return nil, <-errs
+	var allErrs []error
+	for err := range errs {
+		allErrs = append(allErrs, err)
+	}
+	if len(allErrs) > 0 {
+		for _, e := range allErrs {
+			logger.Error("parallel upload error", "error", e)
+		}
+		return nil, fmt.Errorf("upload failed for %d file(s)", len(allErrs))
 	}
 
-	return results, nil
+	finalResults := make(map[string]string)
+	results.Range(func(key, value any) bool {
+		finalResults[key.(string)] = value.(string)
+		return true
+	})
+
+	return finalResults, nil
 }
 
 func (s *S3Client) GetImageURL(fileName string) string {

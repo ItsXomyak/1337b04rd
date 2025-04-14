@@ -34,11 +34,15 @@ func (s *ThreadService) CreateThread(
 
 	var imageURL *string
 	if image != nil {
-		url, err := s.s3.UploadImage(image, 0, contentType)
+		files := map[string]io.Reader{"image": image}
+		types := map[string]string{"image": contentType}
+
+		urls, err := s.s3.UploadImages(files, types)
 		if err != nil {
-			logger.Error("failed to upload image", "error", err)
+			logger.Error("failed to upload thread image", "error", err)
 			return nil, err
 		}
+		url := urls["image"]
 		imageURL = &url
 	}
 
@@ -118,14 +122,30 @@ func (s *ThreadService) CleanupExpiredThreads(ctx context.Context) error {
 
 	now := time.Now()
 	var lastErr error
+
 	for _, t := range threads {
-		if t.ShouldDelete(now) {
+		createdAgo := now.Sub(t.CreatedAt)
+
+		switch {
+		// 1. Удалить, если прошло >10 минут и комментариев не было
+		case t.LastCommented == nil && createdAgo > 10*time.Minute:
 			t.MarkAsDeleted()
-			if err := s.threadRepo.UpdateThread(ctx, t); err != nil {
-				lastErr = err
-				continue
-			}
+			logger.Info("deleting thread with no comments after 10 minutes", "thread_id", t.ID)
+
+		// 2. Удалить, если после последнего комментария прошло >15 минут
+		case t.LastCommented != nil && now.Sub(*t.LastCommented) > 15*time.Minute:
+			t.MarkAsDeleted()
+			logger.Info("deleting thread after 15 minutes of inactivity", "thread_id", t.ID)
+
+		default:
+			continue
+		}
+
+		if err := s.threadRepo.UpdateThread(ctx, t); err != nil {
+			logger.Error("failed to update (delete) thread", "error", err, "thread_id", t.ID)
+			lastErr = err
 		}
 	}
+
 	return lastErr
 }

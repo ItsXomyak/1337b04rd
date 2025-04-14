@@ -63,8 +63,8 @@ func Run() {
 
 	avatarSvc := services.NewAvatarService(avatarClient)
 	sessionSvc := services.NewSessionService(sessionRepo, avatarSvc, cfg.Session.Duration)
-	threadSvc := services.NewThreadService(threadRepo, s3ThreadsClient)
-	commentSvc := services.NewCommentService(commentRepo, threadRepo, s3CommentsClient)
+	threadSvc := services.NewThreadService(threadRepo, s3.NewAdapter(s3ThreadsClient))
+	commentSvc := services.NewCommentService(commentRepo, threadRepo, s3.NewAdapter(s3CommentsClient))
 
 	router := httpadapter.NewRouter(sessionSvc, avatarSvc, threadSvc, commentSvc)
 

@@ -6,7 +6,6 @@ import (
 
 	"1337b04rd/internal/app/common/logger"
 	"1337b04rd/internal/app/common/utils"
-	uuidHelper "1337b04rd/internal/app/common/utils"
 	"1337b04rd/internal/app/ports"
 	"1337b04rd/internal/domain/comment"
 )
@@ -27,12 +26,12 @@ func NewCommentService(commentRepo ports.CommentPort, threadRepo ports.ThreadPor
 
 func (s *CommentService) CreateComment(
 	ctx context.Context,
-	threadID uuidHelper.UUID,
-	parentID *uuidHelper.UUID,
+	threadID utils.UUID,
+	parentID *utils.UUID,
 	content string,
 	image io.Reader,
 	contentType string,
-	sessionID uuidHelper.UUID,
+	sessionID utils.UUID,
 ) (*comment.Comment, error) {
 	if err := ctx.Err(); err != nil {
 		logger.Warn("context canceled in CreateComment", "error", err)
@@ -41,11 +40,15 @@ func (s *CommentService) CreateComment(
 
 	var imageURL *string
 	if image != nil {
-		url, err := s.s3.UploadImage(image, 0, contentType)
+		files := map[string]io.Reader{"image": image}
+		types := map[string]string{"image": contentType}
+
+		urls, err := s.s3.UploadImages(files, types)
 		if err != nil {
 			logger.Error("failed to upload comment image", "error", err)
 			return nil, err
 		}
+		url := urls["image"]
 		imageURL = &url
 	}
 
