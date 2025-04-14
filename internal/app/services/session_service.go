@@ -97,3 +97,19 @@ func (s *SessionService) UpdateDisplayName(id utils.UUID, newName string) error 
 	}
 	return err
 }
+
+func (s *SessionService) GetSessionByID(id string) (*session.Session, error) {
+	uuid, err := utils.ParseUUID(id)
+	if err != nil {
+		return nil, errors.ErrInvalidSessionID
+	}
+
+	sess, err := s.repo.GetSessionByID(uuid.String())
+	if err != nil {
+		return nil, err
+	}
+	if sess.ExpiresAt.Before(time.Now()) {
+		return nil, errors.ErrSessionExpired
+	}
+	return sess, nil
+}

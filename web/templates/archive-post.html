@@ -1,50 +1,87 @@
-<!-- templates/archive-post.html -->
 <!DOCTYPE html>
-<html>
-	<head>
-		<title>{{.Post.Title}} (Archived)</title>
-		<style>
-			.comment {
-				border: 1px solid #ccc;
-				padding: 10px;
-				margin: 10px 0;
-			}
-			.comment img.avatar {
-				width: 50px;
-				vertical-align: middle;
-			}
-			.comment-content {
-				display: inline-block;
-				vertical-align: middle;
-				margin-left: 10px;
-			}
-		</style>
-	</head>
-	<body>
-		<a href="/archive">Back to Archive</a>
-		<h1>{{.Post.Title}} (Archived)</h1>
-		<p>{{.Post.Content}}</p>
-		{{if .Post.ImageURL}}
-		<img src="{{.Post.ImageURL}}" alt="Post Image" />
-		{{end}}
-		<p>Post ID: {{.Post.ID}}</p>
-		<h2>Comments</h2>
-		<div class="comments">
-			{{range .Comments}}
-			<div class="comment">
-				<img class="avatar" src="{{.AvatarURL}}" alt="User Avatar" />
-				<div class="comment-content">
-					<p><strong>Comment ID:</strong> {{.ID}}</p>
-					{{if .ReplyToID}}
-					<p><em>Reply to ID: {{.ReplyToID}}</em></p>
-					{{end}}
-					<p>{{.Content}}</p>
-				</div>
-			</div>
-			{{else}}
-			<p>No comments available.</p>
-			{{end}}
-		</div>
-		<!-- Comment form is omitted since adding new comments is not allowed -->
-	</body>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Post.Title}} (Archived)</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #E6E9F5;
+        }
+        header {
+            text-align: center;
+            padding: 10px;
+        }
+        nav a {
+            margin: 0 10px;
+            text-decoration: none;
+            color: blue;
+        }
+        nav a:hover {
+            text-decoration: underline;
+        }
+        .post, .comment {
+            margin: 10px;
+            padding: 10px;
+            background-color: white;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .post img, .comment img.avatar {
+            max-width: 200px;
+            border-radius: 5px;
+        }
+        .comment img.avatar {
+            width: 50px;
+            vertical-align: middle;
+        }
+        .comment-content {
+            display: inline-block;
+            vertical-align: middle;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+<header>
+    <h1>{{.Post.Title}} (Archived)</h1>
+    <nav>
+        [<a href="/">Catalog</a>] |
+        [<a href="/archive">Archive</a>] |
+        [<a href="/create-post">Create Post</a>]
+    </nav>
+</header>
+<main>
+    <div class="post">
+        <p><strong>{{.Post.DisplayName}}</strong> {{.Post.CreatedAt}} ID: {{.Post.ID}}</p>
+        {{if .Post.ImageURL}}
+        <img src="{{.Post.ImageURL}}" alt="Post Image">
+        {{end}}
+        <p>{{.Post.Content}}</p>
+    </div>
+    <div class="comments">
+        <h2>Comments</h2>
+        {{range .Comments}}
+        <div class="comment">
+            <img class="avatar" src="{{.AvatarURL}}" alt="User Avatar">
+            <div class="comment-content">
+                <p><strong>{{.DisplayName}}</strong> {{.CreatedAt}} ID: {{.ID}}</p>
+                {{if .ParentCommentID}}
+                <p><em>Reply to: <a href="#{{.ParentCommentID}}">{{.ParentCommentID}}</a></em></p>
+                {{end}}
+                {{if .ImageURL}}
+                <img src="{{.ImageURL}}" alt="Comment Image">
+                {{end}}
+                <p>{{.Content}}</p>
+            </div>
+        </div>
+        {{else}}
+        <p>No comments available.</p>
+        {{end}}
+    </div>
+</main>
+</body>
 </html>

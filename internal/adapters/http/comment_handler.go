@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"1337b04rd/internal/adapters/s3"
 	"1337b04rd/internal/app/common/logger"
 	"1337b04rd/internal/app/common/utils"
 	"1337b04rd/internal/app/services"
@@ -14,12 +15,91 @@ import (
 
 type CommentHandler struct {
 	commentSvc *services.CommentService
+	s3Client   *s3.S3Client
 }
 
 func NewCommentHandler(commentSvc *services.CommentService, logger *slog.Logger) *CommentHandler {
 	return &CommentHandler{
 		commentSvc: commentSvc,
 	}
+}
+
+func (h *CommentHandler) SubmitComment(w http.ResponseWriter, r *http.Request) {
+    err := r.ParseMultipartForm(10 << 20)
+    if err != nil {
+        logger.Warn("failed to parse form", "error", err)
+        RenderTemplate(w, "error.html", map[string]interface{}{
+            "Code":    http.StatusBadRequest,
+            "Message": "Invalid form data",
+        })
+        return
+    }
+
+    sess, ok := GetSessionFromContext(r.Context())
+    if !ok {
+        logger.Warn("session not found")
+        RenderTemplate(w, "error.html", map[string]interface{}{
+            "Code":    http.StatusUnauthorized,
+            "Message": "Session required",
+        })
+        return
+    }
+
+    threadIDStr := r.FormValue("thread_id")
+    content := r.FormValue("comment")
+    parentIDStr := r.FormValue("parent_id")
+    file, fileHeader, err := r.FormFile("file")
+    var imageURL *string
+    if err == nil && file != nil && fileHeader != nil {
+        defer file.Close()
+        contentType := fileHeader.Header.Get("Content-Type")
+        url, err := h.s3Client.UploadCommentImage(file, fileHeader.Filename, contentType)
+        if err != nil {
+            logger.Error("failed to upload image to S3", "error", err)
+            RenderTemplate(w, "error.html", map[string]interface{}{
+                "Code":    http.StatusInternalServerError,
+                "Message": "Failed to upload image",
+            })
+            return
+        }
+        imageURL = &url
+    }
+
+    threadID, err := utils.ParseUUID(threadIDStr)
+    if err != nil {
+        logger.Warn("invalid thread ID", "thread_id", threadIDStr)
+        RenderTemplate(w, "error.html", map[string]interface{}{
+            "Code":    http.StatusBadRequest,
+            "Message": "Invalid thread ID",
+        })
+        return
+    }
+
+    var parentID *utils.UUID
+    if parentIDStr != "" {
+        pid, err := utils.ParseUUID(parentIDStr)
+        if err != nil {
+            logger.Warn("invalid parent ID", "parent_id", parentIDStr)
+            RenderTemplate(w, "error.html", map[string]interface{}{
+                "Code":    http.StatusBadRequest,
+                "Message": "Invalid parent ID",
+            })
+            return
+        }
+        parentID = &pid
+    }
+
+    _, err = h.commentSvc.CreateComment(r.Context(), threadID, parentID, content, imageURL, sess.ID)
+    if err != nil {
+        logger.Error("failed to create comment", "error", err)
+        RenderTemplate(w, "error.html", map[string]interface{}{
+            "Code":    http.StatusInternalServerError,
+            "Message": "Failed to create comment",
+        })
+        return
+    }
+
+    http.Redirect(w, r, "/post/"+threadID.String(), http.StatusSeeOther)
 }
 
 func (h *CommentHandler) CreateComment(w http.ResponseWriter, r *http.Request) {

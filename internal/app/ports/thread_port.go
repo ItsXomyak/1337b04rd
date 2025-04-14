@@ -14,3 +14,4 @@ type ThreadPort interface {
 	ListActiveThreads(ctx context.Context) ([]*thread.Thread, error) 
 	ListAllThreads(ctx context.Context) ([]*thread.Thread, error)    
 }
+

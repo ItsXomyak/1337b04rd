@@ -16,6 +16,8 @@ type Comment struct {
 	SessionID       uuidHelper.UUID
 	CreatedAt       time.Time
 	IsDeleted       bool
+	DisplayName string 
+	AvatarURL   string 
 }
 
 func NewComment(threadID uuidHelper.UUID, parentCommentID *uuidHelper.UUID, content string, imageURL *string, sessionID uuidHelper.UUID) (*Comment, error) {
@@ -49,3 +51,4 @@ func NewComment(threadID uuidHelper.UUID, parentCommentID *uuidHelper.UUID, cont
 func (c *Comment) MarkAsDeleted() {
 	c.IsDeleted = true
 }
+

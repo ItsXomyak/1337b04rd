@@ -1,166 +1,104 @@
 <!DOCTYPE html>
 <html lang="en">
-	<head>
-		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Post Page</title>
-		<style>
-			body {
-				font-family: Arial, sans-serif;
-				margin: 0;
-				padding: 0;
-				background-color: #e6e9f5;
-			}
-
-			header {
-				text-align: center;
-			}
-
-			main {
-				margin: 10px;
-			}
-
-			.post .header {
-				display: flex;
-				align-items: center;
-			}
-
-			.post .content {
-				margin-top: 20px;
-				display: flex;
-			}
-
-			.post .content img {
-				width: 300px;
-			}
-
-			.text {
-			}
-
-			.comment .header {
-				display: flex;
-				align-items: center;
-			}
-
-			.comment .content {
-				margin-top: 10px;
-				display: flex;
-			}
-		</style>
-	</head>
-	<body>
-		<header>
-			<h1>Thread Title</h1>
-		</header>
-		<main>
-			<!-- Main Post -->
-			<div class="post">
-				<div class="header">
-					<!--            <img src="{{.UserAvatar}}" alt="no pic" width="30px" height="30px">-->
-					<img
-						src="https://rickandmortyapi.com/api/character/avatar/1.jpeg"
-						alt="no pic"
-						width="50px"
-						height="50px"
-					/>
-					<b>{{.UserName}}</b>
-					{{.DataTime}} {{.PostID}}
-				</div>
-				<div class="content">
-					<a
-						href="https://www.google.com/images/branding/googlelogo/2x/googlelogo_light_color_272x92dp.png"
-					>
-						<img
-							src="https://www.google.com/images/branding/googlelogo/2x/googlelogo_light_color_272x92dp.png"
-							alt="no pic"
-						/>
-					</a>
-					<div class="text">
-						<h3>{{.Title}}</h3>
-						{{.Content}}
-					</div>
-				</div>
-			</div>
-			<!-- Comments Section -->
-			<div class="comments">
-				<h2>Comments</h2>
-				<ul class="comment-list">
-					{{range .Comments}}
-					<li class="comment">
-						<div class="header">
-							<!--            <img src="{{.UserAvatar}}" alt="no pic" width="30px" height="30px">-->
-							<img
-								src="{{.AvaterLink}}"
-								alt="no pic"
-								width="50px"
-								height="50px"
-							/>
-							<b>{{.UserName}}</b>
-							{{.DataTime}} {{.CommentID}}
-						</div>
-						<div class="content">
-							<a
-								href="https://www.google.com/images/branding/googlelogo/2x/googlelogo_light_color_272x92dp.png"
-							>
-								<img
-									src="https://www.google.com/images/branding/googlelogo/2x/googlelogo_light_color_272x92dp.png"
-									alt="no pic"
-									width="100px"
-									height="100px"
-								/>
-							</a>
-							<div class="text">{{.Content}}</div>
-						</div>
-					</li>
-					{{end}}
-					<li class="comment">
-						<div class="header">
-							<!--            <img src="{{.UserAvatar}}" alt="no pic" width="30px" height="30px">-->
-							<img
-								src="https://rickandmortyapi.com/api/character/avatar/1.jpeg"
-								alt="no pic"
-								width="50px"
-								height="50px"
-							/>
-							<b>{{.UserName}}</b>
-							{{.DataTime}} {{.PostID}}
-						</div>
-						<div class="content">
-							<a
-								href="https://www.google.com/images/branding/googlelogo/2x/googlelogo_light_color_272x92dp.png"
-							>
-								<img
-									src="https://www.google.com/images/branding/googlelogo/2x/googlelogo_light_color_272x92dp.png"
-									alt="no pic"
-									width="100px"
-									height="100px"
-								/>
-							</a>
-							<div class="text">{{.Content}}</div>
-						</div>
-					</li>
-				</ul>
-				<!-- Comment Example -->
-			</div>
-
-			<!-- Add a Comment Section -->
-			<div class="add-comment">
-				<h3>Add a Comment</h3>
-				<form action="/submit-comment" method="POST">
-					<textarea
-						name="comment"
-						placeholder="Write your comment here..."
-					></textarea>
-					<tr>
-						<td>File</td>
-						<td>
-							<input name="file" type="file" />
-						</td>
-					</tr>
-					<br />
-					<input type="submit" value="Submit" />
-				</form>
-			</div>
-		</main>
-	</body>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Post.Title}}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #E6E9F5;
+        }
+        header {
+            text-align: center;
+            padding: 10px;
+        }
+        nav a {
+            margin: 0 10px;
+            text-decoration: none;
+            color: blue;
+        }
+        nav a:hover {
+            text-decoration: underline;
+        }
+        .post, .comment {
+            margin: 10px;
+            padding: 10px;
+            background-color: white;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .post img, .comment img.avatar {
+            max-width: 200px;
+            border-radius: 5px;
+        }
+        .comment img.avatar {
+            width: 50px;
+            vertical-align: middle;
+        }
+        .comment-content {
+            display: inline-block;
+            vertical-align: middle;
+            margin-left: 10px;
+        }
+        .add-comment {
+            margin: 10px;
+        }
+        .add-comment textarea {
+            width: 100%;
+            height: 100px;
+        }
+    </style>
+</head>
+<body>
+<header>
+    <h1>{{.Post.Title}}</h1>
+    <nav>
+        [<a href="/">Catalog</a>] |
+        [<a href="/archive">Archive</a>] |
+        [<a href="/create-post">Create Post</a>]
+    </nav>
+</header>
+<main>
+    <div class="post">
+        <p><strong>{{.Post.DisplayName}}</strong> {{.Post.CreatedAt}} ID: {{.Post.ID}}</p>
+        {{if .Post.ImageURL}}
+        <img src="{{.Post.ImageURL}}" alt="Post Image">
+        {{end}}
+        <p>{{.Post.Content}}</p>
+    </div>
+    <div class="comments">
+        <h2>Comments</h2>
+        {{range .Comments}}
+        <div class="comment">
+            <img class="avatar" src="{{.AvatarURL}}" alt="User Avatar">
+            <div class="comment-content">
+                <p><strong>{{.DisplayName}}</strong> {{.CreatedAt}} ID: {{.ID}}</p>
+                {{if .ParentCommentID}}
+                <p><em>Reply to: <a href="#{{.ParentCommentID}}">{{.ParentCommentID}}</a></em></p>
+                {{end}}
+                {{if .ImageURL}}
+                <img src="{{.ImageURL}}" alt="Comment Image">
+                {{end}}
+                <p>{{.Content}}</p>
+            </div>
+        </div>
+        {{else}}
+        <p>No comments yet.</p>
+        {{end}}
+    </div>
+    <div class="add-comment">
+        <h3>Add a Comment</h3>
+        <form action="/submit-comment" method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="thread_id" value="{{.Post.ID}}">
+            <textarea name="comment" placeholder="Write your comment here..." required></textarea><br>
+            <label>File: <input name="file" type="file"></label><br>
+            <label>Reply to ID: <input name="parent_id" type="text"></label><br>
+            <input type="submit" value="Submit">
+        </form>
+    </div>
+</main>
+</body>
 </html>

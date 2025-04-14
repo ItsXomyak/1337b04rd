@@ -11,3 +11,4 @@ type CommentPort interface {
 	CreateComment(ctx context.Context, c *comment.Comment) error
 	GetCommentsByThreadID(ctx context.Context, threadID uuidHelper.UUID) ([]*comment.Comment, error)
 }
+

@@ -1,7 +1,6 @@
 package config
 
 import (
-	"log"
 	"os"
 	"strconv"
 	"time"
@@ -10,106 +9,57 @@ import (
 )
 
 type Config struct {
-	Port int
-
-	DB struct {
+	AppEnv string
+	DB     struct {
 		Host     string
-		Port     int
+		Port     string
+		Name     string
 		User     string
 		Password string
-		Name     string
 		SSLMode  string
 	}
-
-	S3 struct {
-		Endpoint      string
-		AccessKey     string
-		SecretKey     string
-		BucketPosts   string
-		BucketThreads string
-		Region        string
-		UseSSL        bool
+	AvatarAPI struct {
+		BaseURL string
 	}
-
 	Session struct {
 		CookieName string
 		Duration   time.Duration
 	}
-
-	AvatarAPI struct {
-		BaseURL string
+	S3 struct {
+		Endpoint      string
+		AccessKey     string
+		SecretKey     string
+		PostBucket    string
+		CommentBucket string
+		Region        string
+		UseSSL        bool
 	}
-
-	AppEnv string
 }
 
-func Load() *Config {
-	if os.Getenv("APP_ENV") != "production" {
-		_ = godotenv.Load()
+func Load() Config {
+	godotenv.Load()
+
+	cfg := Config{
+		AppEnv: os.Getenv("APP_ENV"),
 	}
-	cfg := &Config{}
-
-	// Port
-	cfg.Port = mustGetInt("PORT")
-
-	// DB config
-	cfg.DB.Host = mustGet("DB_HOST")
-	cfg.DB.Port = mustGetInt("DB_PORT")
-	cfg.DB.User = mustGet("DB_USER")
-	cfg.DB.Password = mustGet("DB_PASSWORD")
-	cfg.DB.Name = mustGet("DB_NAME")
-	cfg.DB.SSLMode = getOrDefault("DB_SSLMODE", "disable")
-
-	// S3
-	cfg.S3.Endpoint = mustGet("S3_ENDPOINT")
-	cfg.S3.AccessKey = mustGet("S3_ACCESS_KEY")
-	cfg.S3.SecretKey = mustGet("S3_SECRET_KEY")
-	cfg.S3.BucketThreads = mustGet("S3_BUCKET_THREADS")
-	cfg.S3.BucketPosts = mustGet("S3_BUCKET_POSTS")
-	cfg.S3.Region = mustGet("S3_REGION")
-	cfg.S3.UseSSL = getBool("S3_USE_SSL")
-
-	// Session
-	cfg.Session.CookieName = getOrDefault("SESSION_COOKIE_NAME", "1337session")
-	cfg.Session.Duration = time.Hour * 24 * time.Duration(mustGetInt("SESSION_DURATION_DAYS"))
-
-	// Avatar API
-	cfg.AvatarAPI.BaseURL = mustGet("AVATAR_API_BASE_URL")
-
-	// App env
-	cfg.AppEnv = getOrDefault("APP_ENV", "development")
+	cfg.DB.Host = os.Getenv("DB_HOST")
+	cfg.DB.Port = os.Getenv("DB_PORT")
+	cfg.DB.Name = os.Getenv("DB_NAME")
+	cfg.DB.User = os.Getenv("DB_USER")
+	cfg.DB.Password = os.Getenv("DB_PASSWORD")
+	cfg.DB.SSLMode = os.Getenv("DB_SSLMODE")
+	cfg.AvatarAPI.BaseURL = os.Getenv("AVATAR_API_BASE_URL")
+	cfg.Session.CookieName = os.Getenv("SESSION_COOKIE_NAME")
+	durationDays, _ := strconv.Atoi(os.Getenv("SESSION_DURATION_DAYS"))
+	cfg.Session.Duration = time.Duration(durationDays) * 24 * time.Hour
+	cfg.S3.Endpoint = os.Getenv("S3_ENDPOINT")
+	cfg.S3.AccessKey = os.Getenv("S3_ACCESS_KEY")
+	cfg.S3.SecretKey = os.Getenv("S3_SECRET_KEY")
+	cfg.S3.PostBucket = os.Getenv("S3_BUCKET_THREADS")
+	cfg.S3.CommentBucket = os.Getenv("S3_BUCKET_POSTS")
+	cfg.S3.Region = os.Getenv("S3_REGION")
+	useSSL, _ := strconv.ParseBool(os.Getenv("S3_USE_SSL"))
+	cfg.S3.UseSSL = useSSL
 
 	return cfg
-}
-
-// === helpers ===
-
-func mustGet(key string) string {
-	val := os.Getenv(key)
-	if val == "" {
-		log.Fatalf("Missing required env var: %s", key)
-	}
-	return val
-}
-
-func mustGetInt(key string) int {
-	val := mustGet(key)
-	n, err := strconv.Atoi(val)
-	if err != nil {
-		log.Fatalf("Invalid integer value for %s: %s", key, val)
-	}
-	return n
-}
-
-func getOrDefault(key string, def string) string {
-	val := os.Getenv(key)
-	if val == "" {
-		return def
-	}
-	return val
-}
-
-func getBool(key string) bool {
-	val := os.Getenv(key)
-	return val == "true" || val == "1"
 }

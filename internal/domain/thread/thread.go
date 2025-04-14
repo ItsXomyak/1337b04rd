@@ -16,6 +16,7 @@ type Thread struct {
 	CreatedAt     time.Time
 	LastCommented *time.Time
 	IsDeleted     bool
+	DisplayName string
 }
 
 func NewThread(title, content string, imageURL *string, sessionID uuidHelper.UUID) (*Thread, error) {
@@ -68,3 +69,4 @@ func (t *Thread) ShouldDelete(now time.Time) bool {
 func (t *Thread) MarkAsDeleted() {
 	t.IsDeleted = true
 }
+
