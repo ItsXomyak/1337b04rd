@@ -104,18 +104,34 @@ func Run() {
 }
 
 func withCORS(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Разрешения настроит Манс
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        // Получаем Origin из запроса
+        origin := r.Header.Get("Origin")
+        
+        // Разрешаем только локальные источники для разработки
+        allowedOrigins := map[string]bool{
+            "http://localhost:5500": true,
+            "http://127.0.0.1:5500": true,
+        }
 
-		// Preflight-запрос (браузер спрашивает, можно ли)
-		if r.Method == http.MethodOptions {
-			w.WriteHeader(http.StatusNoContent)
-			return
-		}
+        // Если Origin разрешён, устанавливаем его в заголовок
+        if allowedOrigins[origin] {
+            w.Header().Set("Access-Control-Allow-Origin", origin)
+        } else {
+            // Если Origin не разрешён, можно вернуть ошибку или пустой заголовок
+            w.Header().Set("Access-Control-Allow-Origin", "")
+        }
 
-		next.ServeHTTP(w, r)
-	})
+        w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+        w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        w.Header().Set("Access-Control-Allow-Credentials", "true")
+
+        // Preflight-запрос (браузер спрашивает, можно ли)
+        if r.Method == http.MethodOptions {
+            w.WriteHeader(http.StatusNoContent)
+            return
+        }
+
+        next.ServeHTTP(w, r)
+    })
 }

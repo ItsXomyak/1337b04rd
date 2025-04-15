@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Image Board - New Thread</title>
+		<script src="https://cdn.tailwindcss.com"></script>
+	</head>
+	<body class="bg-gray-900 text-white min-h-screen">
+		<header class="bg-gray-800 p-4 flex justify-between items-center">
+			<h1 class="text-2xl font-bold">New Thread</h1>
+			<a
+				href="catalog.html"
+				class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded"
+				>Back to Catalog</a
+			>
+		</header>
+		<main class="container mx-auto p-4">
+			<form id="thread-form" class="bg-gray-800 p-4 rounded-lg">
+				<div class="mb-4">
+					<label for="title" class="block text-sm font-semibold mb-1"
+						>Title</label
+					>
+					<input
+						type="text"
+						id="title"
+						name="title"
+						class="w-full p-2 bg-gray-700 rounded text-white"
+						required
+					/>
+				</div>
+				<div class="mb-4">
+					<label for="content" class="block text-sm font-semibold mb-1"
+						>Content</label
+					>
+					<textarea
+						id="content"
+						name="content"
+						class="w-full p-2 bg-gray-700 rounded text-white"
+						required
+					></textarea>
+				</div>
+				<div class="mb-4">
+					<label for="images" class="block text-sm font-semibold mb-1"
+						>Images (optional)</label
+					>
+					<input
+						type="file"
+						id="images"
+						name="images"
+						multiple
+						accept="image/*"
+						class="w-full p-2 bg-gray-700 rounded text-white"
+					/>
+				</div>
+				<button
+					type="submit"
+					class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded"
+				>
+					Create Thread
+				</button>
+			</form>
+		</main>
+		<script>
+			document
+				.getElementById('thread-form')
+				.addEventListener('submit', async e => {
+					e.preventDefault()
+					const formData = new FormData()
+					formData.append('title', document.getElementById('title').value)
+					formData.append('content', document.getElementById('content').value)
+					const imageFiles = document.getElementById('images').files
+					for (let i = 0; i < imageFiles.length; i++) {
+						formData.append('images', imageFiles[i])
+					}
+
+					try {
+						const response = await fetch('http://localhost:8080/threads', {
+							method: 'POST',
+							body: formData,
+							credentials: 'include', // Отправляем cookie
+						})
+						if (!response.ok) {
+							const errorText = await response.text()
+							throw new Error(`Failed to create thread: ${errorText}`)
+						}
+						const data = await response.json()
+						window.location.href = `post.html?id=${data.thread_id}`
+					} catch (error) {
+						window.location.href = `error.html?code=${encodeURIComponent(
+							error.message
+						)}`
+					}
+				})
+		</script>
+	</body>
+</html>

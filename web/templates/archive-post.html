@@ -1,50 +1,125 @@
-<!-- templates/archive-post.html -->
 <!DOCTYPE html>
-<html>
+<html lang="en">
 	<head>
-		<title>{{.Post.Title}} (Archived)</title>
-		<style>
-			.comment {
-				border: 1px solid #ccc;
-				padding: 10px;
-				margin: 10px 0;
-			}
-			.comment img.avatar {
-				width: 50px;
-				vertical-align: middle;
-			}
-			.comment-content {
-				display: inline-block;
-				vertical-align: middle;
-				margin-left: 10px;
-			}
-		</style>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Image Board - Archived Thread</title>
+		<script src="https://cdn.tailwindcss.com"></script>
 	</head>
-	<body>
-		<a href="/archive">Back to Archive</a>
-		<h1>{{.Post.Title}} (Archived)</h1>
-		<p>{{.Post.Content}}</p>
-		{{if .Post.ImageURL}}
-		<img src="{{.Post.ImageURL}}" alt="Post Image" />
-		{{end}}
-		<p>Post ID: {{.Post.ID}}</p>
-		<h2>Comments</h2>
-		<div class="comments">
-			{{range .Comments}}
-			<div class="comment">
-				<img class="avatar" src="{{.AvatarURL}}" alt="User Avatar" />
-				<div class="comment-content">
-					<p><strong>Comment ID:</strong> {{.ID}}</p>
-					{{if .ReplyToID}}
-					<p><em>Reply to ID: {{.ReplyToID}}</em></p>
-					{{end}}
-					<p>{{.Content}}</p>
-				</div>
-			</div>
-			{{else}}
-			<p>No comments available.</p>
-			{{end}}
-		</div>
-		<!-- Comment form is omitted since adding new comments is not allowed -->
+	<body class="bg-gray-900 text-white min-h-screen">
+		<header class="bg-gray-800 p-4 flex justify-between items-center">
+			<h1 class="text-2xl font-bold">Archived Thread</h1>
+			<a
+				href="catalog.html"
+				class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded"
+				>Back to Catalog</a
+			>
+		</header>
+		<main class="container mx-auto p-4">
+			<div id="thread" class="bg-gray-800 p-4 rounded-lg mb-4"></div>
+			<div id="comments" class="space-y-4 mb-4"></div>
+			<p class="text-red-400">
+				This thread is archived. You cannot add new comments.
+			</p>
+		</main>
+		<script>
+			const threadId = new URLSearchParams(window.location.search).get('id')
+
+			async function loadThread() {
+				try {
+					const response = await fetch(
+						`http://localhost:8080/threads/view/${threadId}`,
+						{ credentials: 'include' }
+					)
+					if (!response.ok) throw new Error('Failed to fetch thread')
+					const thread = await response.json()
+					document.getElementById('thread').innerHTML = `
+                    <h2 class="text-xl font-semibold">${thread.Title}</h2>
+                    <p class="text-gray-400">${thread.Content}</p>
+                    ${
+											thread.ImageURLs?.length > 0
+												? thread.ImageURLs.map(
+														url =>
+															`<img src="${url}" alt="Thread image" class="w-full max-w-md rounded my-2">`
+												  ).join('')
+												: ''
+										}
+                    <p class="text-sm text-gray-500">Posted: ${new Date(
+											thread.CreatedAt
+										).toLocaleString()}</p>
+                `
+				} catch (error) {
+					window.location.href = `error.html?code=${encodeURIComponent(
+						error.message
+					)}`
+				}
+			}
+
+			async function loadComments() {
+				try {
+					if (!threadId) {
+						throw new Error('Thread ID is missing')
+					}
+					console.log('Fetching comments for threadId:', threadId) // Отладка
+					const response = await fetch(
+						`http://localhost:8080/threads/comment?thread_id=${threadId}`,
+						{
+							credentials: 'include',
+						}
+					)
+					if (!response.ok) {
+						const errorText = await response.text()
+						throw new Error(`Failed to fetch comments: ${errorText}`)
+					}
+					const comments = await response.json()
+					const commentsDiv = document.getElementById('comments')
+					commentsDiv.innerHTML = ''
+					if (!Array.isArray(comments) || comments.length === 0) {
+						commentsDiv.innerHTML =
+							'<p class="text-gray-400">No comments yet.</p>'
+					} else {
+						comments.forEach(comment => {
+							const commentDiv = document.createElement('div')
+							commentDiv.className = 'bg-gray-700 p-3 rounded-lg'
+							commentDiv.innerHTML = `
+                    <div class="flex items-center">
+                        <img src="${
+													comment.avatar_url
+												}" alt="Avatar" class="w-8 h-8 rounded-full mr-2">
+                        <span class="font-semibold">${
+													comment.display_name
+												}</span>
+                        <span class="text-gray-500 text-sm ml-2">[${
+													comment.ID
+												}]</span>
+                    </div>
+                    <p>${comment.Content}${
+								comment.ReplyToID
+									? ` <span class="text-blue-400">[Replying to ${comment.ReplyToID}]</span>`
+									: ''
+							}</p>
+                    <p class="text-sm text-gray-500">${new Date(
+											comment.CreatedAt
+										).toLocaleString()}</p>
+                    <button onclick="setReplyTo('${
+											comment.ID
+										}')" class="text-blue-400 text-sm">Reply</button>
+                `
+							commentsDiv.appendChild(commentDiv)
+						})
+					}
+				} catch (error) {
+					console.error('Error loading comments:', error)
+					const commentsDiv = document.getElementById('comments')
+					commentsDiv.innerHTML =
+						'<p class="text-red-400">Failed to load comments.</p>'
+				}
+			}
+
+			window.onload = async () => {
+				await loadThread()
+				await loadComments()
+			}
+		</script>
 	</body>
 </html>
