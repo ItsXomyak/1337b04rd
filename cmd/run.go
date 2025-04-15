@@ -79,6 +79,7 @@ func Run() {
 
 	// HTTP router
 	router := httpadapter.NewRouter(sessionSvc, avatarSvc, threadSvc, commentSvc)
+	corsRouter := withCORS(router)
 
 	// запуск фонового удаления
 	go func() {
@@ -95,8 +96,26 @@ func Run() {
 
 	addr := fmt.Sprintf(":%d", *port)
 	logger.Info("starting server", "address", addr)
-	if err := http.ListenAndServe(addr, router); err != nil {
+
+	if err := http.ListenAndServe(addr, corsRouter); err != nil {
 		logger.Error("server failed", "error", err)
 		os.Exit(1)
 	}
+}
+
+func withCORS(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Разрешения настроит Манс
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+		// Preflight-запрос (браузер спрашивает, можно ли)
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }
