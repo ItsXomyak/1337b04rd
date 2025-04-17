@@ -8,17 +8,19 @@ import (
 )
 
 type Comment struct {
-	ID              uuidHelper.UUID
-	ThreadID        uuidHelper.UUID
-	ParentCommentID *uuidHelper.UUID
-	Content         string
-	ImageURLs       []string
-	SessionID       uuidHelper.UUID
-	CreatedAt       time.Time
-	IsDeleted       bool
+    ID              uuidHelper.UUID  `json:"ID"`
+    ThreadID        uuidHelper.UUID  `json:"ThreadID"`
+    ParentCommentID *uuidHelper.UUID `json:"ParentCommentID"`
+    Content         string           `json:"Content"`
+    ImageURLs       []string         `json:"ImageURLs"`
+    SessionID       uuidHelper.UUID  `json:"SessionID"`
+    CreatedAt       time.Time        `json:"CreatedAt"`
+    IsDeleted       bool             `json:"IsDeleted"`
+    DisplayName     string           `json:"display_name"`
+    AvatarURL       string           `json:"avatar_url"`  
 }
 
-func NewComment(threadID uuidHelper.UUID, parentCommentID *uuidHelper.UUID, content string, imageURLs []string, sessionID uuidHelper.UUID) (*Comment, error) {
+func NewComment(threadID uuidHelper.UUID, parentCommentID *uuidHelper.UUID, content string, imageURLs []string, sessionID uuidHelper.UUID, DisplayName string, AvatarURL string) (*Comment, error) {
 	if threadID.IsZero() {
 		return nil, ErrInvalidThreadID
 	}
@@ -27,6 +29,12 @@ func NewComment(threadID uuidHelper.UUID, parentCommentID *uuidHelper.UUID, cont
 	}
 	if sessionID.IsZero() {
 		return nil, ErrInvalidSessionID
+	}
+	if DisplayName == "" {
+		return nil, ErrInvalidDisplayName
+	}
+	if AvatarURL == "" {
+		return nil, ErrInvalidAvatarURL
 	}
 
 	id, err := uuidHelper.NewUUID()
@@ -43,6 +51,8 @@ func NewComment(threadID uuidHelper.UUID, parentCommentID *uuidHelper.UUID, cont
 		SessionID:       sessionID,
 		CreatedAt:       time.Now(),
 		IsDeleted:       false,
+		DisplayName:  	 DisplayName,
+		AvatarURL:  	   AvatarURL,
 	}, nil
 }
 

@@ -1,12 +1,12 @@
 package services
 
 import (
+	"errors"
 	"time"
 
 	"1337b04rd/internal/app/common/logger"
 	"1337b04rd/internal/app/common/utils"
 	"1337b04rd/internal/app/ports"
-	"1337b04rd/internal/domain/errors"
 	"1337b04rd/internal/domain/session"
 )
 
@@ -25,30 +25,30 @@ func NewSessionService(repo ports.SessionPort, avatarSvc ports.AvatarPort, ttl t
 }
 
 func (s *SessionService) GetOrCreate(sessionID string) (*session.Session, error) {
-	if sessionID == "" {
-		logger.Info("no session ID found, creating new session")
-		return s.CreateNew()
-	}
+    if sessionID == "" {
+        logger.Warn("no session ID provided")
+        return nil, errors.New("Session ID not provided")
+    }
 
-	sess, err := s.repo.GetSessionByID(sessionID)
-	if err != nil {
-		logger.Warn("session not found, creating new one", "sessionID", sessionID, "error", err)
-		return s.CreateNew()
-	}
+    sess, err := s.repo.GetSessionByID(sessionID)
+    if err != nil {
+        logger.Warn("session not found", "sessionID", sessionID, "error", err)
+        return nil, err
+    }
 
-	if sess.IsExpired() {
-		logger.Info("session expired, creating new one", "sessionID", sessionID)
-		return s.CreateNew()
-	}
+    if sess.IsExpired() {
+        logger.Info("session expired", "sessionID", sessionID)
+        return nil, err
+    }
 
-	return sess, nil
+    return sess, nil
 }
 
 func (s *SessionService) CreateNew() (*session.Session, error) {
 	avatar, err := s.avatarSvc.GetRandomAvatar()
 	if err != nil {
 		logger.Error("failed to assign avatar", "error", err)
-		return nil, errors.ErrAvatarAssignment
+		return nil, err
 	}
 
 	newSess, err := session.NewSession(avatar.URL, avatar.DisplayName, s.sessionTTL)

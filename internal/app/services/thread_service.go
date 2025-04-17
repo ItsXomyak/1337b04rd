@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"mime/multipart"
+	"strings"
 	"time"
 
 	"1337b04rd/internal/app/common/logger"
@@ -43,9 +44,10 @@ func (s *ThreadService) CreateThread(
 			return nil, err
 		}
 
-		// собираем в слайс
+		// Заменяем minio:9000 на localhost:9000 в URL-адресах
 		for _, url := range urls {
-			imageURLs = append(imageURLs, url)
+			updatedURL := strings.Replace(url, "http://minio:9000", "http://localhost:9000", 1)
+			imageURLs = append(imageURLs, updatedURL)
 		}
 	}
 
@@ -106,6 +108,12 @@ func (s *ThreadService) GetThreadByID(ctx context.Context, id uuidHelper.UUID) (
 		logger.Error("cannot to get thread by id", "error", err)
 		return nil, err
 	}
+
+	// Заменяем minio:9000 на localhost:9000 в ImageURLs
+	for i, url := range t.ImageURLs {
+		t.ImageURLs[i] = strings.Replace(url, "http://minio:9000", "http://localhost:9000", 1)
+	}
+
 	logger.Info("received a thread by ID", "thread", t, "id", id)
 	return t, nil
 }
@@ -125,6 +133,10 @@ func (s *ThreadService) ListActiveThreads(ctx context.Context) ([]*thread.Thread
 	var activeThreads []*thread.Thread
 	for _, t := range threads {
 		if !t.ShouldDelete(now) {
+			// Заменяем minio:9000 на localhost:9000 в ImageURLs
+			for i, url := range t.ImageURLs {
+				t.ImageURLs[i] = strings.Replace(url, "http://minio:9000", "http://localhost:9000", 1)
+			}
 			activeThreads = append(activeThreads, t)
 		}
 	}
@@ -142,6 +154,13 @@ func (s *ThreadService) ListAllThreads(ctx context.Context) ([]*thread.Thread, e
 	if err != nil {
 		logger.Error("failed to list all threads", "error", err)
 		return nil, err
+	}
+
+	// Заменяем minio:9000 на localhost:9000 в ImageURLs для всех тредов
+	for _, t := range threads {
+		for i, url := range t.ImageURLs {
+			t.ImageURLs[i] = strings.Replace(url, "http://minio:9000", "http://localhost:9000", 1)
+		}
 	}
 
 	logger.Info("list of all threads retrieved", "count", len(threads))

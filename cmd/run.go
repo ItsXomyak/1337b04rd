@@ -75,7 +75,7 @@ func Run() {
 	commentS3Adapter := s3.NewAdapter(s3CommentsClient)
 
 	threadSvc := services.NewThreadService(threadRepo, threadS3Adapter)
-	commentSvc := services.NewCommentService(commentRepo, threadRepo, commentS3Adapter)
+	commentSvc := services.NewCommentService(commentRepo, threadRepo, commentS3Adapter,sessionRepo)
 
 	// HTTP router
 	router := httpadapter.NewRouter(sessionSvc, avatarSvc, threadSvc, commentSvc)

@@ -29,14 +29,15 @@ func (h *CommentHandler) CreateComment(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    // Извлекаем сессию из контекста с помощью GetSessionFromContext
     sess, ok := GetSessionFromContext(r.Context())
     if !ok {
         logger.Error("session not found in context")
         Respond(w, http.StatusUnauthorized, map[string]string{"error": "Session not found"})
         return
     }
-    sessionID := sess.ID // Извлекаем sessionID из сессии
+    sessionID := sess.ID
+    displayName := sess.DisplayName
+    avatarURL := sess.AvatarURL
 
     if err := r.ParseMultipartForm(10 << 20); err != nil {
         logger.Error("failed to parse form", "error", err)
@@ -76,7 +77,7 @@ func (h *CommentHandler) CreateComment(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    comment, err := h.commentSvc.CreateComment(r.Context(), threadID, parentID, content, files, contentTypes, sessionID)
+    comment, err := h.commentSvc.CreateComment(r.Context(), threadID, parentID, content, files, contentTypes, sessionID, displayName, avatarURL)
     if err != nil {
         if err == errors.ErrThreadNotFound {
             Respond(w, http.StatusNotFound, map[string]string{"error": "Thread not found"})

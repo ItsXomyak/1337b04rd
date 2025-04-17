@@ -31,23 +31,30 @@ func SessionMiddleware(svc *services.SessionService, cookieName string) func(htt
             sess, err := svc.GetOrCreate(cookieVal)
             if err != nil {
                 logger.Error("failed to resolve session", "error", err)
-                Respond(w, http.StatusInternalServerError, map[string]string{"error": "failed to resolve session"})
-                return
+                if cookieVal == "" {
+                    // Создаём новую сессию, если это первый запрос
+                    sess, err = svc.CreateNew()
+                    if err != nil {
+                        logger.Error("failed to create new session", "error", err)
+                        Respond(w, http.StatusInternalServerError, map[string]string{"error": "failed to create session"})
+                        return
+                    }
+                    http.SetCookie(w, &http.Cookie{
+                        Name:     cookieName,
+                        Value:    sess.ID.String(),
+                        Path:     "/",
+                        Expires:  sess.ExpiresAt,
+                        HttpOnly: true,
+                        SameSite: http.SameSiteNoneMode,
+                        Secure:   false,
+                    })
+                    logger.Info("set new session cookie", "session_id", sess.ID)
+                } else {
+                    Respond(w, http.StatusUnauthorized, map[string]string{"error": "session not found or expired"})
+                    return
+                }
             }
 
-            if cookie == nil || cookie.Value != sess.ID.String() {
-                http.SetCookie(w, &http.Cookie{
-                    Name:     cookieName,
-                    Value:    sess.ID.String(),
-                    Path:     "/",
-                    Expires:  sess.ExpiresAt,
-                    HttpOnly: true,
-                    SameSite: http.SameSiteLaxMode,
-                })
-                logger.Info("set new session cookie", "session_id", sess.ID)
-            }
-
-            // Добавляем только session_id в контекст
             ctx := context.WithValue(r.Context(), sessionKey, sess)
             next.ServeHTTP(w, r.WithContext(ctx))
         })

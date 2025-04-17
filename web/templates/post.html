@@ -135,29 +135,37 @@
 							const commentDiv = document.createElement('div')
 							commentDiv.className = 'bg-gray-700 p-3 rounded-lg'
 							commentDiv.innerHTML = `
-                            <div class="flex items-center">
-                                <img src="${
-																	comment.avatar_url
-																}" alt="Avatar" class="w-8 h-8 rounded-full mr-2">
-                                <span class="font-semibold">${
-																	comment.display_name
-																}</span>
-                                <span class="text-gray-500 text-sm ml-2">[${
-																	comment.ID
-																}]</span>
-                            </div>
-                            <p>${comment.Content}${
+                    <div class="flex items-center">
+                        <img src="${
+													comment.avatar_url
+												}" alt="Avatar" class="w-8 h-8 rounded-full mr-2">
+                        <span class="font-semibold">${
+													comment.display_name
+												}</span>
+                        <span class="text-gray-500 text-sm ml-2">[${
+													comment.ID
+												}]</span>
+                    </div>
+                    <p>${comment.Content}${
 								comment.ReplyToID
 									? ` <span class="text-blue-400">[Replying to ${comment.ReplyToID}]</span>`
 									: ''
 							}</p>
-                            <p class="text-sm text-gray-500">${new Date(
-															comment.CreatedAt
-														).toLocaleString()}</p>
-                            <button onclick="setReplyTo('${
-															comment.ID
-														}')" class="text-blue-400 text-sm">Reply</button>
-                        `
+                    ${
+											comment.ImageURLs?.length > 0
+												? comment.ImageURLs.map(
+														url =>
+															`<img src="${url}" alt="Comment image" class="w-full max-w-md rounded my-2">`
+												  ).join('')
+												: ''
+										}
+                    <p class="text-sm text-gray-500">${new Date(
+											comment.CreatedAt
+										).toLocaleString()}</p>
+                    <button onclick="setReplyTo('${
+											comment.ID
+										}')" class="text-blue-400 text-sm">Reply</button>
+                `
 							commentsDiv.appendChild(commentDiv)
 						})
 					}
