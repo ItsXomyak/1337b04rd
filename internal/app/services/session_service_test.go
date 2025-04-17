@@ -27,8 +27,7 @@ func (m *MockSessionRepository) GetSessionByID(sessionID string) (*session.Sessi
 		if err != nil {
 			return nil, err
 		}
-		
-		// Преобразуем интерфейс в конкретный тип
+
 		if mockSession, ok := sessionInterface.(*MockSession); ok {
 			return &session.Session{
 				ID:          mockSession.ID,
@@ -39,11 +38,10 @@ func (m *MockSessionRepository) GetSessionByID(sessionID string) (*session.Sessi
 		}
 		return nil, errors.New("invalid session type")
 	}
-	
+
 	return nil, errors.New("session not found")
 }
 
-// MockSession - мок для сессии
 type MockSession struct {
 	ID          utils.UUID
 	DisplayName string
@@ -52,12 +50,10 @@ type MockSession struct {
 	ExpiredFlag bool
 }
 
-// Реализация метода IsExpired для MockSession
 func (s *MockSession) IsExpired() bool {
 	return s.ExpiredFlag
 }
 
-// Мок для SessionService
 type SessionService struct {
 	repo *MockSessionRepository
 }
@@ -69,23 +65,22 @@ func NewSessionService(repo *MockSessionRepository) *SessionService {
 }
 
 func (s *SessionService) GetOrCreate(sessionID string) (*session.Session, error) {
-    if sessionID == "" {
-        return nil, errors.New("Session ID not provided")
-    }
+	if sessionID == "" {
+		return nil, errors.New("Session ID not provided")
+	}
 
-    sess, err := s.repo.GetSessionByID(sessionID)
-    if err != nil {
-        return nil, err
-    }
+	sess, err := s.repo.GetSessionByID(sessionID)
+	if err != nil {
+		return nil, err
+	}
 
-    if sess.IsExpired() {
-        return nil, errors.New("session expired")
-    }
+	if sess.IsExpired() {
+		return nil, errors.New("session expired")
+	}
 
-    return sess, nil
+	return sess, nil
 }
 
-// ParseTestUUID парсит UUID из строки для тестирования
 func ParseTestUUID(s string) utils.UUID {
 	uuid, err := utils.ParseUUID(s)
 	if err != nil {
@@ -102,9 +97,9 @@ func TestGetOrCreate(t *testing.T) {
 	t.Run("Empty session ID", func(t *testing.T) {
 		mockRepo := NewMockSessionRepository()
 		service := NewSessionService(mockRepo)
-		
+
 		_, err := service.GetOrCreate("")
-		
+
 		if err == nil {
 			t.Error("Expected error for empty session ID, got nil")
 		}
@@ -120,9 +115,9 @@ func TestGetOrCreate(t *testing.T) {
 			return nil, errors.New("session not found")
 		}
 		service := NewSessionService(mockRepo)
-		
+
 		_, err := service.GetOrCreate("non-existent-id")
-		
+
 		if err == nil {
 			t.Error("Expected error for non-existent session, got nil")
 		}
@@ -134,7 +129,7 @@ func TestGetOrCreate(t *testing.T) {
 	// Тест 3: Сессия истекла
 	t.Run("Expired session", func(t *testing.T) {
 		mockRepo := NewMockSessionRepository()
-		
+
 		// Создаем истекшую сессию с UUID
 		expiredUUID, _ := utils.ParseUUID("123e4567e89b12d3a456426614174000")
 		expiredSession := &MockSession{
@@ -144,18 +139,18 @@ func TestGetOrCreate(t *testing.T) {
 			ExpiresAt:   time.Now().Add(-1 * time.Hour),
 			ExpiredFlag: true, // Помечаем как истекшую
 		}
-		
+
 		mockRepo.getSessionByIDFn = func(sessionID string) (SessionInterface, error) {
 			if sessionID == "expired-session-id" {
 				return expiredSession, nil
 			}
 			return nil, errors.New("session not found")
 		}
-		
+
 		service := NewSessionService(mockRepo)
-		
+
 		_, err := service.GetOrCreate("expired-session-id")
-		
+
 		if err == nil {
 			t.Error("Expected error for expired session, got nil")
 		}
@@ -167,7 +162,7 @@ func TestGetOrCreate(t *testing.T) {
 	// Тест 4: Успешное получение сессии
 	t.Run("Success getting session", func(t *testing.T) {
 		mockRepo := NewMockSessionRepository()
-		
+
 		// Создаем действительную сессию с UUID
 		validUUID, _ := utils.ParseUUID("123e4567e89b12d3a456426614174001")
 		validSession := &MockSession{
@@ -177,18 +172,18 @@ func TestGetOrCreate(t *testing.T) {
 			ExpiresAt:   time.Now().Add(1 * time.Hour),
 			ExpiredFlag: false, // Не истекшая
 		}
-		
+
 		mockRepo.getSessionByIDFn = func(sessionID string) (SessionInterface, error) {
 			if sessionID == "valid-session-id" {
 				return validSession, nil
 			}
 			return nil, errors.New("session not found")
 		}
-		
+
 		service := NewSessionService(mockRepo)
-		
+
 		sess, err := service.GetOrCreate("valid-session-id")
-		
+
 		if err != nil {
 			t.Errorf("Expected no error, got %v", err)
 		}

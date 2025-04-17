@@ -123,8 +123,6 @@ func (s *S3Client) UploadImagesParallel(files map[string]io.Reader, contentTypes
 			}
 			uniqueName := fmt.Sprintf("%s%s", fileID.String(), ext)
 
-			logger.Debug("S3 upload (parallel)", "original", name, "generated", uniqueName, "contentType", ctype, "size", len(data))
-
 			_, err = s.client.PutObject(ctx, s.bucket, uniqueName, buf, int64(len(data)), minio.PutObjectOptions{
 				ContentType: ctype,
 			})
@@ -171,6 +169,5 @@ func (s *S3Client) DeleteFile(fileName string) error {
 		logger.Error("failed to delete file", "file", fileName, "error", err)
 		return err
 	}
-	logger.Info("successfully deleted file", "file", fileName)
 	return nil
 }

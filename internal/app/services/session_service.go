@@ -25,23 +25,22 @@ func NewSessionService(repo ports.SessionPort, avatarSvc ports.AvatarPort, ttl t
 }
 
 func (s *SessionService) GetOrCreate(sessionID string) (*session.Session, error) {
-    if sessionID == "" {
-        logger.Warn("no session ID provided")
-        return nil, errors.New("Session ID not provided")
-    }
+	if sessionID == "" {
+		logger.Warn("no session ID provided")
+		return nil, errors.New("session ID not provided")
+	}
 
-    sess, err := s.repo.GetSessionByID(sessionID)
-    if err != nil {
-        logger.Warn("session not found", "sessionID", sessionID, "error", err)
-        return nil, err
-    }
+	sess, err := s.repo.GetSessionByID(sessionID)
+	if err != nil {
+		logger.Warn("session not found", "sessionID", sessionID, "error", err)
+		return nil, err
+	}
 
-    if sess.IsExpired() {
-        logger.Info("session expired", "sessionID", sessionID)
-        return nil, err
-    }
+	if sess.IsExpired() {
+		return nil, err
+	}
 
-    return sess, nil
+	return sess, nil
 }
 
 func (s *SessionService) CreateNew() (*session.Session, error) {

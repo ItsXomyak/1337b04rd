@@ -75,7 +75,7 @@ func Run() {
 	commentS3Adapter := s3.NewAdapter(s3CommentsClient)
 
 	threadSvc := services.NewThreadService(threadRepo, threadS3Adapter)
-	commentSvc := services.NewCommentService(commentRepo, threadRepo, commentS3Adapter,sessionRepo)
+	commentSvc := services.NewCommentService(commentRepo, threadRepo, commentS3Adapter, sessionRepo)
 
 	// HTTP router
 	router := httpadapter.NewRouter(sessionSvc, avatarSvc, threadSvc, commentSvc)
@@ -104,34 +104,21 @@ func Run() {
 }
 
 func withCORS(next http.Handler) http.Handler {
-    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        // Получаем Origin из запроса
-        origin := r.Header.Get("Origin")
-        
-        // Разрешаем только локальные источники для разработки
-        allowedOrigins := map[string]bool{
-            "http://localhost:5500": true,
-            "http://127.0.0.1:5500": true,
-        }
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		origin := r.Header.Get("Origin")
 
-        // Если Origin разрешён, устанавливаем его в заголовок
-        if allowedOrigins[origin] {
-            w.Header().Set("Access-Control-Allow-Origin", origin)
-        } else {
-            // Если Origin не разрешён, можно вернуть ошибку или пустой заголовок
-            w.Header().Set("Access-Control-Allow-Origin", "")
-        }
+		if origin == "http://localhost:5500" {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 
-        w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-        w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-        w.Header().Set("Access-Control-Allow-Credentials", "true")
+			if r.Method == http.MethodOptions {
+				w.WriteHeader(http.StatusNoContent)
+				return
+			}
+		}
 
-        // Preflight-запрос (браузер спрашивает, можно ли)
-        if r.Method == http.MethodOptions {
-            w.WriteHeader(http.StatusNoContent)
-            return
-        }
-
-        next.ServeHTTP(w, r)
-    })
+		next.ServeHTTP(w, r)
+	})
 }

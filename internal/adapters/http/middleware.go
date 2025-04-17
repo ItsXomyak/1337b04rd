@@ -14,49 +14,45 @@ type contextKey string
 const sessionKey contextKey = "session"
 
 func GetSessionFromContext(ctx context.Context) (*session.Session, bool) {
-    sess, ok := ctx.Value(sessionKey).(*session.Session)
-    logger.Info("GetSessionFromContext", "session_found", ok, "session", sess)
-    return sess, ok
+	sess, ok := ctx.Value(sessionKey).(*session.Session)
+	logger.Info("GetSessionFromContext", "session_found", ok, "session", sess)
+	return sess, ok
 }
 
 func SessionMiddleware(svc *services.SessionService, cookieName string) func(http.Handler) http.Handler {
-    return func(next http.Handler) http.Handler {
-        return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-            var cookieVal string
-            cookie, err := r.Cookie(cookieName)
-            if err == nil {
-                cookieVal = cookie.Value
-            }
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			var sess *session.Session
+			var sessionErr error
 
-            sess, err := svc.GetOrCreate(cookieVal)
-            if err != nil {
-                logger.Error("failed to resolve session", "error", err)
-                if cookieVal == "" {
-                    // Создаём новую сессию, если это первый запрос
-                    sess, err = svc.CreateNew()
-                    if err != nil {
-                        logger.Error("failed to create new session", "error", err)
-                        Respond(w, http.StatusInternalServerError, map[string]string{"error": "failed to create session"})
-                        return
-                    }
-                    http.SetCookie(w, &http.Cookie{
-                        Name:     cookieName,
-                        Value:    sess.ID.String(),
-                        Path:     "/",
-                        Expires:  sess.ExpiresAt,
-                        HttpOnly: true,
-                        SameSite: http.SameSiteNoneMode,
-                        Secure:   false,
-                    })
-                    logger.Info("set new session cookie", "session_id", sess.ID)
-                } else {
-                    Respond(w, http.StatusUnauthorized, map[string]string{"error": "session not found or expired"})
-                    return
-                }
-            }
+			cookie, err := r.Cookie(cookieName)
+			if err == nil {
+				sess, sessionErr = svc.GetOrCreate(cookie.Value)
+			}
 
-            ctx := context.WithValue(r.Context(), sessionKey, sess)
-            next.ServeHTTP(w, r.WithContext(ctx))
-        })
-    }
+			if sessionErr != nil || sess == nil {
+				logger.Warn("creating new session", "reason", sessionErr)
+				sess, err = svc.CreateNew()
+				if err != nil {
+					logger.Error("failed to create new session", "error", err)
+					Respond(w, http.StatusInternalServerError, map[string]string{"error": "failed to create session"})
+					return
+				}
+
+				http.SetCookie(w, &http.Cookie{
+					Name:     cookieName,
+					Value:    sess.ID.String(),
+					Path:     "/",
+					Expires:  sess.ExpiresAt,
+					HttpOnly: true,
+					SameSite: http.SameSiteLaxMode,
+					Secure:   false,
+				})
+				logger.Info("set new session cookie", "session_id", sess.ID)
+			}
+
+			ctx := context.WithValue(r.Context(), sessionKey, sess)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
 }

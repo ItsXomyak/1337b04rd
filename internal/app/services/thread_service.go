@@ -60,8 +60,6 @@ func (s *ThreadService) CreateThread(
 		logger.Error("failed to create new thread", "error", err)
 		return nil, err
 	}
-
-	logger.Info("Successful! New thread created", "thread", t)
 	return t, nil
 }
 
@@ -114,7 +112,6 @@ func (s *ThreadService) GetThreadByID(ctx context.Context, id uuidHelper.UUID) (
 		t.ImageURLs[i] = strings.Replace(url, "http://minio:9000", "http://localhost:9000", 1)
 	}
 
-	logger.Info("received a thread by ID", "thread", t, "id", id)
 	return t, nil
 }
 
@@ -140,7 +137,6 @@ func (s *ThreadService) ListActiveThreads(ctx context.Context) ([]*thread.Thread
 			activeThreads = append(activeThreads, t)
 		}
 	}
-	logger.Info("the list of active threads has been received", "activeThreads", activeThreads)
 	return activeThreads, nil
 }
 
@@ -163,7 +159,6 @@ func (s *ThreadService) ListAllThreads(ctx context.Context) ([]*thread.Thread, e
 		}
 	}
 
-	logger.Info("list of all threads retrieved", "count", len(threads))
 	return threads, nil
 }
 
