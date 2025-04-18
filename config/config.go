@@ -4,9 +4,8 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"strings"
 	"time"
-
-	"github.com/joho/godotenv"
 )
 
 type Config struct {
@@ -44,9 +43,8 @@ type Config struct {
 }
 
 func Load() *Config {
-	if os.Getenv("APP_ENV") != "production" {
-		_ = godotenv.Load()
-	}
+	loadDotEnv(".env") // 👈 Подгружаем .env вручную
+
 	cfg := &Config{}
 
 	// Port
@@ -68,6 +66,15 @@ func Load() *Config {
 	cfg.S3.BucketComments = mustGet("S3_BUCKET_COMMENTS")
 	cfg.S3.Region = mustGet("S3_REGION")
 	cfg.S3.UseSSL = getBool("S3_USE_SSL")
+
+	// Автоматическая подмена хоста
+	if cfg.S3.Endpoint == "minio:9000" || cfg.S3.Endpoint == "http://minio:9000" {
+		if _, err := os.Stat("/.dockerenv"); err != nil {
+			cfg.S3.Endpoint = "http://localhost:9000"
+		} else {
+			cfg.S3.Endpoint = "http://minio:9000"
+		}
+	}
 
 	// Session
 	cfg.Session.CookieName = getOrDefault("SESSION_COOKIE_NAME", "1337session")
@@ -112,4 +119,28 @@ func getOrDefault(key string, def string) string {
 func getBool(key string) bool {
 	val := os.Getenv(key)
 	return val == "true" || val == "1"
+}
+
+// === .env loader using stdlib ===
+
+func loadDotEnv(path string) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return
+	}
+
+	lines := strings.Split(string(data), "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		parts := strings.SplitN(line, "=", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		key := strings.TrimSpace(parts[0])
+		val := strings.Trim(strings.TrimSpace(parts[1]), `"`)
+		_ = os.Setenv(key, val)
+	}
 }
