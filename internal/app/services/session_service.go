@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"time"
 
@@ -24,13 +25,13 @@ func NewSessionService(repo ports.SessionPort, avatarSvc ports.AvatarPort, ttl t
 	}
 }
 
-func (s *SessionService) GetOrCreate(sessionID string) (*session.Session, error) {
+func (s *SessionService) GetOrCreate(ctx context.Context, sessionID string) (*session.Session, error) {
 	if sessionID == "" {
 		logger.Warn("no session ID provided")
 		return nil, errors.New("session ID not provided")
 	}
 
-	sess, err := s.repo.GetSessionByID(sessionID)
+	sess, err := s.repo.GetSessionByID(ctx, sessionID)
 	if err != nil {
 		logger.Warn("session not found", "sessionID", sessionID, "error", err)
 		return nil, err
@@ -43,7 +44,7 @@ func (s *SessionService) GetOrCreate(sessionID string) (*session.Session, error)
 	return sess, nil
 }
 
-func (s *SessionService) CreateNew() (*session.Session, error) {
+func (s *SessionService) CreateNew(ctx context.Context) (*session.Session, error) {
 	avatar, err := s.avatarSvc.GetRandomAvatar()
 	if err != nil {
 		logger.Error("failed to assign avatar", "error", err)
@@ -56,7 +57,7 @@ func (s *SessionService) CreateNew() (*session.Session, error) {
 		return nil, err
 	}
 
-	if err := s.repo.CreateSession(newSess); err != nil {
+	if err := s.repo.CreateSession(ctx, newSess); err != nil {
 		logger.Error("failed to persist session", "id", newSess.ID, "error", err)
 		return nil, err
 	}
@@ -65,8 +66,8 @@ func (s *SessionService) CreateNew() (*session.Session, error) {
 	return newSess, nil
 }
 
-func (s *SessionService) ListActiveSessions() ([]*session.Session, error) {
-	all, err := s.repo.ListActiveSessions()
+func (s *SessionService) ListActiveSessions(ctx context.Context) ([]*session.Session, error) {
+	all, err := s.repo.ListActiveSessions(ctx)
 	if err != nil {
 		logger.Error("failed to list sessions", "error", err)
 		return nil, err
@@ -81,16 +82,16 @@ func (s *SessionService) ListActiveSessions() ([]*session.Session, error) {
 	return result, nil
 }
 
-func (s *SessionService) DeleteExpired() error {
-	err := s.repo.DeleteExpired()
+func (s *SessionService) DeleteExpired(ctx context.Context) error {
+	err := s.repo.DeleteExpired(ctx)
 	if err != nil {
 		logger.Error("failed to delete expired sessions", "error", err)
 	}
 	return err
 }
 
-func (s *SessionService) UpdateDisplayName(id utils.UUID, newName string) error {
-	err := s.repo.UpdateDisplayName(id.String(), newName)
+func (s *SessionService) UpdateDisplayName(ctx context.Context, id utils.UUID, newName string) error {
+	err := s.repo.UpdateDisplayName(ctx, id.String(), newName)
 	if err != nil {
 		logger.Error("failed to update display name", "id", id.String(), "error", err)
 	}

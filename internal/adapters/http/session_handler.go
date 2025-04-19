@@ -57,7 +57,7 @@ func (h *SessionHandler) ChangeDisplayName(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	err := h.SessionService.UpdateDisplayName(sess.ID, name)
+	err := h.SessionService.UpdateDisplayName(r.Context(), sess.ID, name)
 	if err != nil {
 		logger.Error("failed to update display name", "session_id", sess.ID, "err", err)
 		Respond(w, http.StatusInternalServerError, map[string]string{"error": "could not update name"})
@@ -77,7 +77,6 @@ func (h *SessionHandler) GetSessionInfo(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	logger.Info("session info fetched", "session_id", sess.ID)
 	resp := sessionInfoResponse{
 		ID:          sess.ID.String(),
 		DisplayName: sess.DisplayName,
@@ -89,14 +88,12 @@ func (h *SessionHandler) GetSessionInfo(w http.ResponseWriter, r *http.Request) 
 
 // GET /session/list
 func (h *SessionHandler) ListSessions(w http.ResponseWriter, r *http.Request) {
-	sessions, err := h.SessionService.ListActiveSessions()
+	sessions, err := h.SessionService.ListActiveSessions(r.Context())
 	if err != nil {
 		logger.Error("failed to list active sessions", "err", err)
 		Respond(w, http.StatusInternalServerError, map[string]string{"error": "could not list sessions"})
 		return
 	}
-
-	logger.Info("active sessions listed", "count", len(sessions))
 
 	result := make([]sessionItem, 0, len(sessions))
 	for _, s := range sessions {

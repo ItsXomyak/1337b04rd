@@ -1,0 +1,13 @@
+{
+    "folders": [
+      {
+        "path": "."
+      }
+    ],
+    "settings": {
+      "liveServer.settings.host": "localhost",
+      "liveServer.settings.port": 5500
+    }
+  }
+  
+  /// code liveserver-localhost.code-workspace
