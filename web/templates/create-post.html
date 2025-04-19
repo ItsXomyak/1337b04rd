@@ -8,13 +8,20 @@
 	</head>
 	<body class="bg-gray-900 text-white min-h-screen">
 		<header class="bg-gray-800 p-4 flex justify-between items-center">
-			<h1 class="text-2xl font-bold">New Thread</h1>
-			<a
-				href="catalog.html"
-				class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded"
-				>Back to Catalog</a
-			>
-		</header>
+			<h1 class="text-2xl font-bold">Image Board</h1>
+			<div class="flex flex-wrap gap-2">
+				<a href="profile.html" id="user-profile-link" class="flex items-center bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded space-x-2">
+					<img id="user-avatar" class="w-8 h-8 rounded-full" style="display: none;" alt="Avatar">
+					<span id="user-info">UserName</span>
+				  </a>	
+			  <a
+				href="archive.html"
+				class="bg-blue-600 hover:bg-blue-700 px-4 py-3 rounded"
+			  >
+				Archive
+			  </a>
+			</div>
+		  </header>
 		<main class="container mx-auto p-4">
 			<form id="thread-form" class="bg-gray-800 p-4 rounded-lg">
 				<div class="mb-4">
@@ -61,6 +68,7 @@
 				</button>
 			</form>
 		</main>
+		
 		<script>
 			document
 				.getElementById('thread-form')
@@ -92,6 +100,37 @@
 						)}`
 					}
 				})
+
+				async function fetchUserData() {
+				try {
+					const response = await fetch('http://localhost:8080/session/me', {
+					credentials: 'include',
+					});
+					if (!response.ok) throw new Error('Failed to fetch user data');
+					userData = await response.json();
+
+					const userInfo = document.getElementById('user-info');
+					const userAvatar = document.getElementById('user-avatar');
+
+					if (!userInfo || !userAvatar) {
+					console.error('Elements user-info or user-avatar not found');
+					return;
+					}
+
+					userInfo.textContent = userData.display_name || 'Anonymous';
+					if (userData.avatar_url) {
+					userAvatar.src = userData.avatar_url;
+					userAvatar.style.display = 'block';
+					}
+				} catch (error) {
+					window.location.href = `error.html?code=${encodeURIComponent(error.message)}`;
+				}
+				}
+
+				window.onload = async () => {
+				await fetchUserData()
+			}
+
 		</script>
 	</body>
 </html>

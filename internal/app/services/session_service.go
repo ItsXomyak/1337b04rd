@@ -1,14 +1,13 @@
 package services
 
 import (
-	"context"
-	"errors"
-	"time"
-
 	"1337b04rd/internal/app/common/logger"
 	"1337b04rd/internal/app/common/utils"
 	"1337b04rd/internal/app/ports"
 	"1337b04rd/internal/domain/session"
+	"context"
+	"errors"
+	"time"
 )
 
 type SessionService struct {
@@ -91,7 +90,7 @@ func (s *SessionService) DeleteExpired(ctx context.Context) error {
 }
 
 func (s *SessionService) UpdateDisplayName(ctx context.Context, id utils.UUID, newName string) error {
-	logger.Info("calling repo to update display name", "id", id.String(), "newName", newName) // Логирование
+	ё
 	err := s.repo.UpdateDisplayName(ctx, id.String(), newName)
 	if err != nil {
 		logger.Error("failed to update display name", "id", id.String(), "error", err)

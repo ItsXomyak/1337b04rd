@@ -1,14 +1,13 @@
 package http
 
 import (
-	"encoding/json"
-	"net/http"
-	"strings"
-
 	"1337b04rd/internal/app/common/logger"
 	"1337b04rd/internal/app/common/utils"
 	"1337b04rd/internal/app/services"
 	"1337b04rd/internal/domain/errors"
+	"encoding/json"
+	"net/http"
+	"strings"
 )
 
 type ThreadHandler struct {

@@ -1,6 +1,12 @@
 package cmd
 
 import (
+	"1337b04rd/config"
+	"1337b04rd/internal/adapters/postgres"
+	"1337b04rd/internal/adapters/rickmorty"
+	"1337b04rd/internal/adapters/s3"
+	"1337b04rd/internal/app/common/logger"
+	"1337b04rd/internal/app/services"
 	"context"
 	"flag"
 	"fmt"
@@ -8,13 +14,7 @@ import (
 	"os"
 	"time"
 
-	"1337b04rd/config"
 	httpadapter "1337b04rd/internal/adapters/http"
-	"1337b04rd/internal/adapters/postgres"
-	"1337b04rd/internal/adapters/rickmorty"
-	"1337b04rd/internal/adapters/s3"
-	"1337b04rd/internal/app/common/logger"
-	"1337b04rd/internal/app/services"
 )
 
 func Run() {

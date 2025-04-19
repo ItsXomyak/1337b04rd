@@ -1,6 +1,7 @@
 package s3
 
 import (
+	"1337b04rd/internal/app/common/logger"
 	"bytes"
 	"context"
 	"fmt"
@@ -10,7 +11,6 @@ import (
 	"sync"
 	"time"
 
-	"1337b04rd/internal/app/common/logger"
 	uuidHelper "1337b04rd/internal/app/common/utils"
 
 	"github.com/minio/minio-go/v7"

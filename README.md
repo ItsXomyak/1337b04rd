@@ -103,33 +103,20 @@ SESSION_DURATION_DAYS=7
 APP_ENV=development
 ```
 
-### 3. Setup PostgreSQL (for local run)
+### 3. Run MinIO
 
-```bash
-psql -U postgres -d 1337b04rd -f db/init.sql
-```
-
-### 4. Run MinIO
-
-If not using Docker:
-
-```bash
-wget https://dl.min.io/server/minio/release/linux-amd64/minio
-chmod +x minio
-./minio server --address localhost:9000 ./minio-data
-```
-
-Or use:
+Use:
 ```bash
 docker-compose up --build
 ```
 
-## 🎨 Frontend (Live Server)
+## 🎨 Frontend (Python)
 
-Open with VSCode Live Server or:
+Open with VSCode Live Server or Python:
 
 ```bash
 cd web/templates
+python -m SimpleHTTPServer 'port'
 ```
 
 Then open:

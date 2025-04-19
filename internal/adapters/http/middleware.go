@@ -1,12 +1,11 @@
 package http
 
 import (
-	"context"
-	"net/http"
-
 	"1337b04rd/internal/app/common/logger"
 	"1337b04rd/internal/app/services"
 	"1337b04rd/internal/domain/session"
+	"context"
+	"net/http"
 )
 
 type contextKey string

@@ -3,9 +3,9 @@ package errors
 import "errors"
 
 var (
-	ErrCommentNotFound  = errors.New("comment not found")
-	ErrInvalidCommentID = errors.New("invalid comment ID")
-	ErrInvalidParentID  = errors.New("invalid parent comment ID")
+	ErrCommentNotFound    = errors.New("comment not found")
+	ErrInvalidCommentID   = errors.New("invalid comment ID")
+	ErrInvalidParentID    = errors.New("invalid parent comment ID")
 	ErrInvalidDisplayName = errors.New("invalid display name")
 
 	ErrThreadNotFound    = errors.New("thread not found")
@@ -23,8 +23,7 @@ var (
 	ErrInvalidAvatarResponse = errors.New("invalid response format from avatar API")
 	ErrAvatarAlreadyAssigned = errors.New("avatar already assigned to this session")
 	ErrAfterMultipleAttempts = errors.New("failed to get valid avatar after multiple attempts")
-	ErrInvalidAvatarURL = errors.New("invalid avatar URL")
-
+	ErrInvalidAvatarURL      = errors.New("invalid avatar URL")
 
 	ErrSessionRequired     = errors.New("session is required to create thread")
 	ErrSessionNotFound     = errors.New("session not found")
