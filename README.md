@@ -153,8 +153,8 @@ go test ./...
 
 This project has been created by:
 
-- Zhaxylykov Azamat, ***"kazakh painter"***
-- Romanuly Mansur, ***"цитата"***
+- Zhaxylykov A, ***"kazakh painter"***
+- Romanuly M, ***"FullStack overflow"***
 
 ## 📜 License
 
