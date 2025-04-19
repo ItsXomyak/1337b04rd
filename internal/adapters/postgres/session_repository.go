@@ -99,6 +99,7 @@ func (r *SessionRepository) ListActiveSessions(ctx context.Context) ([]*session.
 }
 
 func (r *SessionRepository) UpdateDisplayName(ctx context.Context, id string, name string) error {
+	logger.Info("executing query to update display name", "id", id, "name", name) // Логирование
 	_, err := r.db.ExecContext(ctx, UpdateDisplayName, name, id)
 	if err != nil {
 		logger.Error("failed to update display name", "id", id, "error", err)

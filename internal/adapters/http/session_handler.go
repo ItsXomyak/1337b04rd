@@ -44,6 +44,9 @@ func (h *SessionHandler) ChangeDisplayName(w http.ResponseWriter, r *http.Reques
 	}
 
 	var req changeNameRequest
+
+	logger.Info("Request body for changing display name", "body", r.Body)
+
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		logger.Error("failed to decode change name request", "err", err)
 		Respond(w, http.StatusBadRequest, map[string]string{"error": "invalid request"})
@@ -51,6 +54,8 @@ func (h *SessionHandler) ChangeDisplayName(w http.ResponseWriter, r *http.Reques
 	}
 
 	name := strings.TrimSpace(req.DisplayName)
+	logger.Info("received display name", "name", name) // Логирование имени
+
 	if len(name) < 2 || len(name) > 30 {
 		logger.Warn("invalid name length", "name", name)
 		Respond(w, http.StatusBadRequest, map[string]string{"error": "invalid name length"})
