@@ -1,15 +1,14 @@
 package http
 
 import (
-	"encoding/json"
-	"log/slog"
-	"net/http"
-	"strings"
-
 	"1337b04rd/internal/app/common/logger"
 	"1337b04rd/internal/app/common/utils"
 	"1337b04rd/internal/app/services"
 	"1337b04rd/internal/domain/errors"
+	"encoding/json"
+	"log/slog"
+	"net/http"
+	"strings"
 )
 
 type CommentHandler struct {
@@ -23,72 +22,72 @@ func NewCommentHandler(commentSvc *services.CommentService, logger *slog.Logger)
 }
 
 func (h *CommentHandler) CreateComment(w http.ResponseWriter, r *http.Request) {
-    if r.Method != http.MethodPost {
-        logger.Warn("invalid method", "method", r.Method, "path", r.URL.Path)
-        Respond(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
-        return
-    }
+	if r.Method != http.MethodPost {
+		logger.Warn("invalid method", "method", r.Method, "path", r.URL.Path)
+		Respond(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
+		return
+	}
 
-    sess, ok := GetSessionFromContext(r.Context())
-    if !ok {
-        logger.Error("session not found in context")
-        Respond(w, http.StatusUnauthorized, map[string]string{"error": "Session not found"})
-        return
-    }
-    sessionID := sess.ID
-    displayName := sess.DisplayName
-    avatarURL := sess.AvatarURL
+	sess, ok := GetSessionFromContext(r.Context())
+	if !ok {
+		logger.Error("session not found in context")
+		Respond(w, http.StatusUnauthorized, map[string]string{"error": "Session not found"})
+		return
+	}
+	sessionID := sess.ID
+	displayName := sess.DisplayName
+	avatarURL := sess.AvatarURL
 
-    if err := r.ParseMultipartForm(10 << 20); err != nil {
-        logger.Error("failed to parse form", "error", err)
-        Respond(w, http.StatusBadRequest, map[string]string{"error": "Invalid form data"})
-        return
-    }
+	if err := r.ParseMultipartForm(10 << 20); err != nil {
+		logger.Error("failed to parse form", "error", err)
+		Respond(w, http.StatusBadRequest, map[string]string{"error": "Invalid form data"})
+		return
+	}
 
-    threadIDStr := r.FormValue("thread_id")
-    content := strings.TrimSpace(r.FormValue("content"))
-    parentIDStr := r.FormValue("parent_id")
+	threadIDStr := r.FormValue("thread_id")
+	content := strings.TrimSpace(r.FormValue("content"))
+	parentIDStr := r.FormValue("parent_id")
 
-    if content == "" {
-        Respond(w, http.StatusBadRequest, map[string]string{"error": "Content is required"})
-        return
-    }
+	if content == "" {
+		Respond(w, http.StatusBadRequest, map[string]string{"error": "Content is required"})
+		return
+	}
 
-    threadID, err := utils.ParseUUID(threadIDStr)
-    if err != nil {
-        Respond(w, http.StatusBadRequest, map[string]string{"error": "Invalid thread_id"})
-        return
-    }
+	threadID, err := utils.ParseUUID(threadIDStr)
+	if err != nil {
+		Respond(w, http.StatusBadRequest, map[string]string{"error": "Invalid thread_id"})
+		return
+	}
 
-    var parentID *utils.UUID
-    if parentIDStr != "" {
-        parsedID, err := utils.ParseUUID(parentIDStr)
-        if err != nil {
-            Respond(w, http.StatusBadRequest, map[string]string{"error": "Invalid parent_id"})
-            return
-        }
-        parentID = &parsedID
-    }
+	var parentID *utils.UUID
+	if parentIDStr != "" {
+		parsedID, err := utils.ParseUUID(parentIDStr)
+		if err != nil {
+			Respond(w, http.StatusBadRequest, map[string]string{"error": "Invalid parent_id"})
+			return
+		}
+		parentID = &parsedID
+	}
 
-    files, contentTypes, err := h.commentSvc.PrepareFilesFromMultipart(r.MultipartForm)
-    if err != nil {
-        logger.Error("failed to process uploaded files", "error", err)
-        Respond(w, http.StatusBadRequest, map[string]string{"error": "Invalid image upload"})
-        return
-    }
+	files, contentTypes, err := h.commentSvc.PrepareFilesFromMultipart(r.MultipartForm)
+	if err != nil {
+		logger.Error("failed to process uploaded files", "error", err)
+		Respond(w, http.StatusBadRequest, map[string]string{"error": "Invalid image upload"})
+		return
+	}
 
-    comment, err := h.commentSvc.CreateComment(r.Context(), threadID, parentID, content, files, contentTypes, sessionID, displayName, avatarURL)
-    if err != nil {
-        if err == errors.ErrThreadNotFound {
-            Respond(w, http.StatusNotFound, map[string]string{"error": "Thread not found"})
-            return
-        }
-        logger.Error("failed to create comment", "error", err)
-        Respond(w, http.StatusInternalServerError, map[string]string{"error": "Failed to create comment"})
-        return
-    }
+	comment, err := h.commentSvc.CreateComment(r.Context(), threadID, parentID, content, files, contentTypes, sessionID, displayName, avatarURL)
+	if err != nil {
+		if err == errors.ErrThreadNotFound {
+			Respond(w, http.StatusNotFound, map[string]string{"error": "Thread not found"})
+			return
+		}
+		logger.Error("failed to create comment", "error", err)
+		Respond(w, http.StatusInternalServerError, map[string]string{"error": "Failed to create comment"})
+		return
+	}
 
-    Respond(w, http.StatusCreated, comment)
+	Respond(w, http.StatusCreated, comment)
 }
 
 func (h *CommentHandler) GetCommentsByThreadID(w http.ResponseWriter, r *http.Request) {

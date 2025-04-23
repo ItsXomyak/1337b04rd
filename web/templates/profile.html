@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Image Board - Profile</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+  <header class="bg-gray-800 p-4 flex justify-between items-center">
+    <h1 class="text-2xl font-bold">Archived Thread</h1>
+    <div class="flex gap-4 items-center">
+      <a href="profile.html" id="user-profile-link" class="flex items-center bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded space-x-2">
+        <img id="user-avatar" class="w-8 h-8 rounded-full" style="display: none;" alt="Avatar">
+        <span id="user-info">UserName</span>
+      </a>
+      <a href="catalog.html" class="bg-blue-600 hover:bg-blue-700 px-5 py-3 rounded">
+        Catalog
+      </a>
+      <a href="archive.html" class="bg-blue-600 hover:bg-blue-700 px-5 py-3 rounded">
+        Archive
+      </a>
+      
+    </div>
+  </header>
+  
+
+  <main class="container mx-auto p-4">
+    <div class="max-w-md mx-auto bg-gray-800 p-6 rounded-lg shadow-lg">
+      <h2 class="text-xl font-semibold mb-4">Change Display Name</h2>
+      <form id="nameForm" class="space-y-4">
+        <div>
+          <label for="displayName" class="block text-sm font-medium text-gray-300 mb-1">
+            New Display Name
+          </label>
+          <input
+            type="text"
+            id="displayName"
+            name="displayName"
+            class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Enter new display name"
+            required
+            minlength="2"
+            maxlength="30"
+          />
+        </div>
+        <button
+          type="submit"
+          id = "update-btn"
+          class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition"
+         
+        >
+          Update Name
+        </button>
+      </form>
+      <div id="message" class="mt-4 text-center hidden"></div>
+    </div>
+  </main>
+
+  
+  <script>
+    document.getElementById('nameForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const displayName = document.getElementById('displayName').value;
+      const messageDiv = document.getElementById('message');
+
+      try {
+        const response = await fetch('http://localhost:8080/session/name', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ display_name: displayName }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to update display name');
+        }
+
+        messageDiv.textContent = 'Display name updated successfully!';
+        messageDiv.className = 'mt-4 text-center text-green-500';
+        messageDiv.classList.remove('hidden');
+      } catch (error) {
+        messageDiv.textContent = 'Error updating display name. Please try again.';
+        messageDiv.className = 'mt-4 text-center text-red-500';
+        messageDiv.classList.remove('hidden');
+      }
+    });
+
+    
+
+    async function fetchUserData() {
+				try {
+					const response = await fetch('http://localhost:8080/session/me', {
+					credentials: 'include',
+					});
+					if (!response.ok) throw new Error('Failed to fetch user data');
+					userData = await response.json();
+
+					const userInfo = document.getElementById('user-info');
+					const userAvatar = document.getElementById('user-avatar');
+
+					if (!userInfo || !userAvatar) {
+					console.error('Elements user-info or user-avatar not found');
+					return;
+					}
+
+					userInfo.textContent = userData.display_name || 'Anonymous';
+					if (userData.avatar_url) {
+					userAvatar.src = userData.avatar_url;
+					userAvatar.style.display = 'block';
+					}
+				} catch (error) {
+					window.location.href = `error.html?code=${encodeURIComponent(error.message)}`;
+				}
+				}
+
+				window.onload = async () => {
+				await fetchUserData()
+			}
+
+      const updateBtn = document.getElementById('update-btn');
+
+      updateBtn.addEventListener('click', function () {
+        setTimeout(() => {
+          location.reload();
+        }, 50);
+      });
+
+  </script>
+</body>
+</html>

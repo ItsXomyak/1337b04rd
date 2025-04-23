@@ -1,6 +1,12 @@
 package cmd
 
 import (
+	"1337b04rd/config"
+	"1337b04rd/internal/adapters/postgres"
+	"1337b04rd/internal/adapters/rickmorty"
+	"1337b04rd/internal/adapters/s3"
+	"1337b04rd/internal/app/common/logger"
+	"1337b04rd/internal/app/services"
 	"context"
 	"flag"
 	"fmt"
@@ -8,13 +14,7 @@ import (
 	"os"
 	"time"
 
-	"1337b04rd/config"
 	httpadapter "1337b04rd/internal/adapters/http"
-	"1337b04rd/internal/adapters/postgres"
-	"1337b04rd/internal/adapters/rickmorty"
-	"1337b04rd/internal/adapters/s3"
-	"1337b04rd/internal/app/common/logger"
-	"1337b04rd/internal/app/services"
 )
 
 func Run() {
@@ -45,27 +45,8 @@ func Run() {
 	avatarClient := rickmorty.NewClient(cfg.AvatarAPI.BaseURL, httpClient)
 
 	// S3 clients for threads and comments
-	s3ThreadsClient, err := s3.NewS3Client(
-		cfg.S3.Endpoint,
-		cfg.S3.AccessKey,
-		cfg.S3.SecretKey,
-		cfg.S3.BucketThreads,
-	)
-	if err != nil {
-		logger.Error("failed to create S3 client for threads", "error", err)
-		return
-	}
-
-	s3CommentsClient, err := s3.NewS3Client(
-		cfg.S3.Endpoint,
-		cfg.S3.AccessKey,
-		cfg.S3.SecretKey,
-		cfg.S3.BucketComments,
-	)
-	if err != nil {
-		logger.Error("failed to create S3 client for comments", "error", err)
-		return
-	}
+	s3ThreadsClient := s3.NewS3Client(cfg.S3.Endpoint, cfg.S3.BucketThreads)
+	s3CommentsClient := s3.NewS3Client(cfg.S3.Endpoint, cfg.S3.BucketComments)
 
 	// Services
 	avatarSvc := services.NewAvatarService(avatarClient)

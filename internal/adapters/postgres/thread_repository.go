@@ -1,13 +1,13 @@
 package postgres
 
 import (
+	"1337b04rd/internal/app/common/logger"
+	"1337b04rd/internal/domain/errors"
+	"1337b04rd/internal/domain/thread"
 	"context"
 	"database/sql"
 
-	"1337b04rd/internal/app/common/logger"
 	uuidHelper "1337b04rd/internal/app/common/utils"
-	"1337b04rd/internal/domain/errors"
-	"1337b04rd/internal/domain/thread"
 
 	"github.com/lib/pq"
 )
@@ -36,7 +36,6 @@ func (r *ThreadRepository) CreateThread(ctx context.Context, t *thread.Thread) e
 		t.LastCommented,
 		t.IsDeleted,
 	)
-
 	if err != nil {
 		logger.Error("failed to execute create thread query", "error", err, "thread_id", t.ID)
 	}
@@ -76,7 +75,6 @@ func (r *ThreadRepository) UpdateThread(ctx context.Context, t *thread.Thread) e
 		t.LastCommented,
 		t.IsDeleted,
 	)
-
 	if err != nil {
 		logger.Error("failed to execute update thread query", "error", err, "thread_id", t.ID)
 	}

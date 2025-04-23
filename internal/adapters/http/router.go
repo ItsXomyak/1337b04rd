@@ -1,9 +1,8 @@
 package http
 
 import (
-	"net/http"
-
 	"1337b04rd/internal/app/services"
+	"net/http"
 )
 
 func NewRouter(

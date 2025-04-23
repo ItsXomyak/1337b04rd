@@ -1,6 +1,9 @@
 package services
 
 import (
+	"1337b04rd/internal/app/common/logger"
+	"1337b04rd/internal/app/ports"
+	"1337b04rd/internal/domain/thread"
 	"bytes"
 	"context"
 	"fmt"
@@ -9,10 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"1337b04rd/internal/app/common/logger"
 	uuidHelper "1337b04rd/internal/app/common/utils"
-	"1337b04rd/internal/app/ports"
-	"1337b04rd/internal/domain/thread"
 )
 
 type ThreadService struct {

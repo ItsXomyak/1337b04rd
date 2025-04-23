@@ -1,17 +1,16 @@
 package services
 
 import (
+	"1337b04rd/internal/app/common/logger"
+	"1337b04rd/internal/app/common/utils"
+	"1337b04rd/internal/app/ports"
+	"1337b04rd/internal/domain/comment"
 	"bytes"
 	"context"
 	"fmt"
 	"io"
 	"mime/multipart"
 	"strings"
-
-	"1337b04rd/internal/app/common/logger"
-	"1337b04rd/internal/app/common/utils"
-	"1337b04rd/internal/app/ports"
-	"1337b04rd/internal/domain/comment"
 )
 
 type CommentService struct {
@@ -140,7 +139,7 @@ func (s *CommentService) GetCommentsByThreadID(ctx context.Context, threadID uti
 		}
 
 		if c.DisplayName == "" || c.AvatarURL == "" {
-			session, err := s.sessionRepo.GetSessionByID(c.SessionID.String())
+			session, err := s.sessionRepo.GetSessionByID(ctx, c.SessionID.String())
 			if err != nil {
 				logger.Warn("failed to get session for comment", "session_id", c.SessionID, "error", err)
 				c.DisplayName = "Anonymous"

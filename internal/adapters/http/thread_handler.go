@@ -1,14 +1,13 @@
 package http
 
 import (
-	"encoding/json"
-	"net/http"
-	"strings"
-
 	"1337b04rd/internal/app/common/logger"
 	"1337b04rd/internal/app/common/utils"
 	"1337b04rd/internal/app/services"
 	"1337b04rd/internal/domain/errors"
+	"encoding/json"
+	"net/http"
+	"strings"
 )
 
 type ThreadHandler struct {
@@ -22,46 +21,44 @@ func NewThreadHandler(threadSvc *services.ThreadService) *ThreadHandler {
 }
 
 func (h *ThreadHandler) CreateThread(w http.ResponseWriter, r *http.Request) {
-    // Логируем содержимое контекста
-    logger.Info("Context keys", "keys", r.Context())
-    sess, ok := GetSessionFromContext(r.Context())
-    if !ok {
-        logger.Warn("session not found in CreateThread", "context_value", r.Context().Value(sessionKey))
-        Respond(w, http.StatusUnauthorized, map[string]string{"error": "session not found"})
-        return
-    }
+	sess, ok := GetSessionFromContext(r.Context())
+	if !ok {
+		logger.Warn("session not found in CreateThread", "context_value", r.Context().Value(sessionKey))
+		Respond(w, http.StatusUnauthorized, map[string]string{"error": "session not found"})
+		return
+	}
 
-    if err := r.ParseMultipartForm(20 << 20); err != nil {
-        logger.Error("failed to parse multipart form", "error", err)
-        Respond(w, http.StatusBadRequest, map[string]string{"error": "invalid form data"})
-        return
-    }
+	if err := r.ParseMultipartForm(20 << 20); err != nil {
+		logger.Error("failed to parse multipart form", "error", err)
+		Respond(w, http.StatusBadRequest, map[string]string{"error": "invalid form data"})
+		return
+	}
 
-    title := strings.TrimSpace(r.FormValue("title"))
-    content := strings.TrimSpace(r.FormValue("content"))
+	title := strings.TrimSpace(r.FormValue("title"))
+	content := strings.TrimSpace(r.FormValue("content"))
 
-    if title == "" || content == "" {
-        Respond(w, http.StatusBadRequest, map[string]string{"error": "title and content are required"})
-        return
-    }
+	if title == "" || content == "" {
+		Respond(w, http.StatusBadRequest, map[string]string{"error": "title and content are required"})
+		return
+	}
 
-    files, contentTypes, err := h.threadSvc.PrepareFilesFromMultipart(r.MultipartForm)
-    if err != nil {
-        logger.Error("failed to process files", "error", err)
-        Respond(w, http.StatusBadRequest, map[string]string{"error": "failed to process images"})
-        return
-    }
+	files, contentTypes, err := h.threadSvc.PrepareFilesFromMultipart(r.MultipartForm)
+	if err != nil {
+		logger.Error("failed to process files", "error", err)
+		Respond(w, http.StatusBadRequest, map[string]string{"error": "failed to process images"})
+		return
+	}
 
-    thread, err := h.threadSvc.CreateThread(r.Context(), title, content, files, contentTypes, sess.ID)
-    if err != nil {
-        logger.Error("failed to create thread", "error", err)
-        Respond(w, http.StatusInternalServerError, map[string]string{"error": "could not create thread"})
-        return
-    }
+	thread, err := h.threadSvc.CreateThread(r.Context(), title, content, files, contentTypes, sess.ID)
+	if err != nil {
+		logger.Error("failed to create thread", "error", err)
+		Respond(w, http.StatusInternalServerError, map[string]string{"error": "could not create thread"})
+		return
+	}
 
-    Respond(w, http.StatusCreated, map[string]string{
-        "thread_id": thread.ID.String(),
-    })
+	Respond(w, http.StatusCreated, map[string]string{
+		"thread_id": thread.ID.String(),
+	})
 }
 
 func (h *ThreadHandler) GetThread(w http.ResponseWriter, r *http.Request) {

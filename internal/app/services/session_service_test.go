@@ -1,12 +1,11 @@
 package services_test
 
 import (
+	"1337b04rd/internal/app/common/utils"
+	"1337b04rd/internal/domain/session"
 	"errors"
 	"testing"
 	"time"
-
-	"1337b04rd/internal/app/common/utils"
-	"1337b04rd/internal/domain/session"
 )
 
 type SessionInterface interface {
@@ -183,7 +182,6 @@ func TestGetOrCreate(t *testing.T) {
 		service := NewSessionService(mockRepo)
 
 		sess, err := service.GetOrCreate("valid-session-id")
-
 		if err != nil {
 			t.Errorf("Expected no error, got %v", err)
 		}

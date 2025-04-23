@@ -1,10 +1,10 @@
 package ports
 
 import (
+	"1337b04rd/internal/domain/comment"
 	"context"
 
 	uuidHelper "1337b04rd/internal/app/common/utils"
-	"1337b04rd/internal/domain/comment"
 )
 
 type CommentPort interface {

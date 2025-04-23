@@ -1,12 +1,11 @@
 package postgres
 
 import (
-	"context"
-	"database/sql"
-
 	"1337b04rd/internal/app/common/logger"
 	"1337b04rd/internal/app/common/utils"
 	"1337b04rd/internal/domain/comment"
+	"context"
+	"database/sql"
 
 	"github.com/lib/pq"
 )

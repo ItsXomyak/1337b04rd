@@ -1,13 +1,13 @@
 package postgres
 
 import (
-	"database/sql"
-	"time"
-
 	"1337b04rd/internal/app/common/logger"
 	"1337b04rd/internal/app/common/utils"
 	"1337b04rd/internal/domain/errors"
 	"1337b04rd/internal/domain/session"
+	"context"
+	"database/sql"
+	"time"
 )
 
 type SessionRepository struct {
@@ -18,11 +18,8 @@ func NewSessionRepository(db *sql.DB) *SessionRepository {
 	return &SessionRepository{db: db}
 }
 
-func (r *SessionRepository) CreateSession(s *session.Session) error {
-	query := `
-		INSERT INTO sessions (id, avatar_url, display_name, created_at, expires_at)
-		VALUES ($1, $2, $3, $4, $5)`
-	_, err := r.db.Exec(query,
+func (r *SessionRepository) CreateSession(ctx context.Context, s *session.Session) error {
+	_, err := r.db.ExecContext(ctx, CreateSession,
 		s.ID.String(),
 		s.AvatarURL,
 		s.DisplayName,
@@ -35,12 +32,8 @@ func (r *SessionRepository) CreateSession(s *session.Session) error {
 	return err
 }
 
-func (r *SessionRepository) GetSessionByID(id string) (*session.Session, error) {
-	query := `
-		SELECT id, avatar_url, display_name, created_at, expires_at
-		FROM sessions
-		WHERE id = $1`
-	row := r.db.QueryRow(query, id)
+func (r *SessionRepository) GetSessionByID(ctx context.Context, id string) (*session.Session, error) {
+	row := r.db.QueryRowContext(ctx, GetSessionByID, id)
 
 	var s session.Session
 	var uuidStr string
@@ -63,22 +56,16 @@ func (r *SessionRepository) GetSessionByID(id string) (*session.Session, error) 
 	return &s, nil
 }
 
-func (r *SessionRepository) DeleteExpired() error {
-	query := `
-		DELETE FROM sessions
-		WHERE expires_at < $1`
-	_, err := r.db.Exec(query, time.Now())
+func (r *SessionRepository) DeleteExpired(ctx context.Context) error {
+	_, err := r.db.ExecContext(ctx, DeleteExpired, time.Now())
 	if err != nil {
 		logger.Error("failed to delete expired sessions", "error", err)
 	}
 	return err
 }
 
-func (r *SessionRepository) ListActiveSessions() ([]*session.Session, error) {
-	query := `
-		SELECT id, avatar_url, display_name, created_at, expires_at
-		FROM sessions`
-	rows, err := r.db.Query(query)
+func (r *SessionRepository) ListActiveSessions(ctx context.Context) ([]*session.Session, error) {
+	rows, err := r.db.QueryContext(ctx, ListActiveSessions)
 	if err != nil {
 		logger.Error("failed to query active sessions", "error", err)
 		return nil, err
@@ -89,8 +76,7 @@ func (r *SessionRepository) ListActiveSessions() ([]*session.Session, error) {
 	for rows.Next() {
 		var s session.Session
 		var uuidStr string
-		err := rows.Scan(&uuidStr, &s.AvatarURL, &s.DisplayName, &s.CreatedAt, &s.ExpiresAt)
-		if err != nil {
+		if err := rows.Scan(&uuidStr, &s.AvatarURL, &s.DisplayName, &s.CreatedAt, &s.ExpiresAt); err != nil {
 			logger.Error("failed to scan session row", "error", err)
 			return nil, err
 		}
@@ -111,9 +97,8 @@ func (r *SessionRepository) ListActiveSessions() ([]*session.Session, error) {
 	return sessions, nil
 }
 
-func (r *SessionRepository) UpdateDisplayName(id string, name string) error {
-	query := `UPDATE sessions SET display_name = $1 WHERE id = $2`
-	_, err := r.db.Exec(query, name, id)
+func (r *SessionRepository) UpdateDisplayName(ctx context.Context, id string, name string) error {
+	_, err := r.db.ExecContext(ctx, UpdateDisplayName, name, id)
 	if err != nil {
 		logger.Error("failed to update display name", "id", id, "error", err)
 	}

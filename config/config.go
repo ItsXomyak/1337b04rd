@@ -43,7 +43,7 @@ type Config struct {
 }
 
 func Load() *Config {
-	loadDotEnv(".env") // 👈 Подгружаем .env вручную
+	loadDotEnv(".env")
 
 	cfg := &Config{}
 
@@ -67,7 +67,6 @@ func Load() *Config {
 	cfg.S3.Region = mustGet("S3_REGION")
 	cfg.S3.UseSSL = getBool("S3_USE_SSL")
 
-	// Автоматическая подмена хоста
 	if cfg.S3.Endpoint == "minio:9000" || cfg.S3.Endpoint == "http://minio:9000" {
 		if _, err := os.Stat("/.dockerenv"); err != nil {
 			cfg.S3.Endpoint = "http://localhost:9000"

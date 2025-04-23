@@ -8,16 +8,16 @@ import (
 )
 
 type Comment struct {
-    ID              uuidHelper.UUID  `json:"ID"`
-    ThreadID        uuidHelper.UUID  `json:"ThreadID"`
-    ParentCommentID *uuidHelper.UUID `json:"ParentCommentID"`
-    Content         string           `json:"Content"`
-    ImageURLs       []string         `json:"ImageURLs"`
-    SessionID       uuidHelper.UUID  `json:"SessionID"`
-    CreatedAt       time.Time        `json:"CreatedAt"`
-    IsDeleted       bool             `json:"IsDeleted"`
-    DisplayName     string           `json:"display_name"`
-    AvatarURL       string           `json:"avatar_url"`  
+	ID              uuidHelper.UUID  `json:"ID"`
+	ThreadID        uuidHelper.UUID  `json:"ThreadID"`
+	ParentCommentID *uuidHelper.UUID `json:"ParentCommentID"`
+	Content         string           `json:"Content"`
+	ImageURLs       []string         `json:"ImageURLs"`
+	SessionID       uuidHelper.UUID  `json:"SessionID"`
+	CreatedAt       time.Time        `json:"CreatedAt"`
+	IsDeleted       bool             `json:"IsDeleted"`
+	DisplayName     string           `json:"display_name"`
+	AvatarURL       string           `json:"avatar_url"`
 }
 
 func NewComment(threadID uuidHelper.UUID, parentCommentID *uuidHelper.UUID, content string, imageURLs []string, sessionID uuidHelper.UUID, DisplayName string, AvatarURL string) (*Comment, error) {
@@ -51,8 +51,8 @@ func NewComment(threadID uuidHelper.UUID, parentCommentID *uuidHelper.UUID, cont
 		SessionID:       sessionID,
 		CreatedAt:       time.Now(),
 		IsDeleted:       false,
-		DisplayName:  	 DisplayName,
-		AvatarURL:  	   AvatarURL,
+		DisplayName:     DisplayName,
+		AvatarURL:       AvatarURL,
 	}, nil
 }
 

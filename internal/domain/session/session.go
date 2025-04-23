@@ -1,10 +1,10 @@
 package session
 
 import (
+	"1337b04rd/internal/domain/errors"
 	"time"
 
 	uuidHelper "1337b04rd/internal/app/common/utils"
-	"1337b04rd/internal/domain/errors"
 )
 
 type Session struct {

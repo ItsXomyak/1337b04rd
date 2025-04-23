@@ -1,59 +1,35 @@
 package s3
 
 import (
+	"1337b04rd/internal/app/common/logger"
 	"bytes"
 	"context"
 	"fmt"
 	"io"
 	"mime"
+	"net/http"
 	"strings"
 	"sync"
 	"time"
 
-	"1337b04rd/internal/app/common/logger"
 	uuidHelper "1337b04rd/internal/app/common/utils"
-
-	"github.com/minio/minio-go/v7"
-	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
 type S3Client struct {
-	client *minio.Client
-	bucket string
+	endpoint string
+	bucket   string
 }
 
-func NewS3Client(endpoint, accessKey, secretKey, bucket string) (*S3Client, error) {
+func NewS3Client(endpoint, bucket string) *S3Client {
 	endpoint = strings.TrimPrefix(endpoint, "http://")
 	endpoint = strings.TrimPrefix(endpoint, "https://")
-	useSSL := false
-
-	minioClient, err := minio.New(endpoint, &minio.Options{
-		Creds:  credentials.NewStaticV4(accessKey, secretKey, ""),
-		Secure: useSSL,
-	})
-	if err != nil {
-		logger.Error("failed to initialize minio client", "error", err)
-		return nil, err
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	exists, errBucketExists := minioClient.BucketExists(ctx, bucket)
-	if errBucketExists != nil {
-		logger.Error("failed to check bucket existence", "error", errBucketExists)
-		return nil, errBucketExists
-	}
-	if !exists {
-		logger.Warn("bucket does not exist", "bucket", bucket)
-	}
-
 	return &S3Client{
-		client: minioClient,
-		bucket: bucket,
-	}, nil
+		endpoint: endpoint,
+		bucket:   bucket,
+	}
 }
 
-func (s *S3Client) UploadImage(file io.Reader, size int64, contentType string) (string, error) {
+func (s *S3Client) UploadImage(file io.Reader, _ int64, contentType string) (string, error) {
 	fileID, err := uuidHelper.NewUUID()
 	if err != nil {
 		logger.Error("failed to generate UUID", "error", err)
@@ -72,18 +48,28 @@ func (s *S3Client) UploadImage(file io.Reader, size int64, contentType string) (
 		logger.Error("failed to read file", "error", err)
 		return "", err
 	}
-	reader := bytes.NewReader(data)
 
-	uploadInfo, err := s.client.PutObject(context.Background(), s.bucket, fileName, reader, int64(len(data)), minio.PutObjectOptions{
-		ContentType: contentType,
-	})
+	url := fmt.Sprintf("http://%s/%s/%s", s.endpoint, s.bucket, fileName)
+
+	req, err := http.NewRequest("PUT", url, bytes.NewReader(data))
 	if err != nil {
-		logger.Error("failed to upload image to minio", "file", fileName, "error", err)
 		return "", err
 	}
+	req.Header.Set("Content-Type", contentType)
 
-	logger.Info("image uploaded to minio", "location", uploadInfo.Location)
-	return s.GetImageURL(fileName), nil
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
+		body, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("upload failed: %s\n%s", resp.Status, string(body))
+	}
+
+	logger.Info("image uploaded (raw)", "url", url)
+	return url, nil
 }
 
 func (s *S3Client) UploadImagesParallel(files map[string]io.Reader, contentTypes map[string]string) (map[string]string, error) {
@@ -109,8 +95,6 @@ func (s *S3Client) UploadImagesParallel(files map[string]io.Reader, contentTypes
 				return
 			}
 
-			buf := bytes.NewReader(data)
-
 			ext := ""
 			if exts, _ := mime.ExtensionsByType(ctype); len(exts) > 0 {
 				ext = exts[0]
@@ -123,15 +107,27 @@ func (s *S3Client) UploadImagesParallel(files map[string]io.Reader, contentTypes
 			}
 			uniqueName := fmt.Sprintf("%s%s", fileID.String(), ext)
 
-			_, err = s.client.PutObject(ctx, s.bucket, uniqueName, buf, int64(len(data)), minio.PutObjectOptions{
-				ContentType: ctype,
-			})
+			url := fmt.Sprintf("http://%s/%s/%s", s.endpoint, s.bucket, uniqueName)
+			req, err := http.NewRequestWithContext(ctx, "PUT", url, bytes.NewReader(data))
 			if err != nil {
-				errs <- fmt.Errorf("upload error (%s): %w", name, err)
+				errs <- fmt.Errorf("request error (%s): %w", name, err)
+				return
+			}
+			req.Header.Set("Content-Type", ctype)
+
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				errs <- fmt.Errorf("http error (%s): %w", name, err)
+				return
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
+				body, _ := io.ReadAll(resp.Body)
+				errs <- fmt.Errorf("upload failed (%s): %s\n%s", name, resp.Status, string(body))
 				return
 			}
 
-			url := s.GetImageURL(uniqueName)
 			results.Store(name, url)
 		}(fileName, file, contentType)
 	}
@@ -160,14 +156,27 @@ func (s *S3Client) UploadImagesParallel(files map[string]io.Reader, contentTypes
 }
 
 func (s *S3Client) GetImageURL(fileName string) string {
-	return fmt.Sprintf("http://%s/%s/%s", s.client.EndpointURL().Host, s.bucket, fileName)
+	return fmt.Sprintf("http://%s/%s/%s", s.endpoint, s.bucket, fileName)
 }
 
 func (s *S3Client) DeleteFile(fileName string) error {
-	err := s.client.RemoveObject(context.Background(), s.bucket, fileName, minio.RemoveObjectOptions{})
+	url := fmt.Sprintf("http://%s/%s/%s", s.endpoint, s.bucket, fileName)
+
+	req, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
-		logger.Error("failed to delete file", "file", fileName, "error", err)
 		return err
 	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("delete failed: %s\n%s", resp.Status, string(body))
+	}
+
 	return nil
 }

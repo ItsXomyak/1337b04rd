@@ -9,25 +9,33 @@
 	<body class="bg-gray-900 text-white min-h-screen">
 		<header class="bg-gray-800 p-4 flex justify-between items-center">
 			<h1 class="text-2xl font-bold">Image Board</h1>
-			<div>
-				<a
-					href="archive.html"
-					class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded mr-2"
-					>Archive</a
-				>
-				<a
-					href="create-post.html"
-					class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded"
-					>New Thread</a
-				>
+			<div class="flex flex-wrap gap-2">
+				<a href="profile.html" id="user-profile-link" class="flex items-center bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded space-x-2">
+					<img id="user-avatar" class="w-8 h-8 rounded-full" style="display: none;" alt="Avatar">
+					<span id="user-info">UserName</span>
+				  </a>	
+			  <a
+				href="archive.html"
+				class="bg-blue-600 hover:bg-blue-700 px-4 py-3 rounded"
+			  >
+				Archive
+			  </a>
+			  <a
+				href="create-post.html"
+				class="bg-green-600 hover:bg-green-700 px-4 py-3 rounded"
+			  >
+				New Thread
+			  </a>
 			</div>
-		</header>
+		  </header>
+		  
 		<main class="container mx-auto p-4">
 			<div
 				id="threads"
 				class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
 			></div>
 		</main>
+		<script src="profile.js"></script>
 		<script>
 			async function loadThreads() {
 				try {
@@ -76,7 +84,36 @@
 				}
 			}
 
-			window.onload = loadThreads
+			async function fetchUserData() {
+			try {
+				const response = await fetch('http://localhost:8080/session/me', {
+				credentials: 'include',
+				});
+				if (!response.ok) throw new Error('Failed to fetch user data');
+				userData = await response.json();
+
+				const userInfo = document.getElementById('user-info');
+				const userAvatar = document.getElementById('user-avatar');
+
+				if (!userInfo || !userAvatar) {
+				console.error('Elements user-info or user-avatar not found');
+				return;
+				}
+
+				userInfo.textContent = userData.display_name || 'Anonymous';
+				if (userData.avatar_url) {
+				userAvatar.src = userData.avatar_url;
+				userAvatar.style.display = 'block';
+				}
+			} catch (error) {
+				window.location.href = `error.html?code=${encodeURIComponent(error.message)}`;
+			}
+			}
+
+			window.onload = async () => {
+				await fetchUserData()
+				await loadThreads()
+			}
 		</script>
 	</body>
 </html>

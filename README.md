@@ -63,7 +63,7 @@ An anonymous image board backend written in **Go**. Supports threads, comments, 
 ### 1. Clone & Init
 
 ```bash
-git clone https://platform.alem.school/git/mromanul/1337b04rd.git
+git clone git@git.platform.alem.school:mromanul/1337b04rd.git
 cd 1337b04rd
 ```
 
@@ -103,38 +103,25 @@ SESSION_DURATION_DAYS=7
 APP_ENV=development
 ```
 
-### 3. Setup PostgreSQL (for local run)
+### 3. Run MinIO
 
-```bash
-psql -U postgres -d 1337b04rd -f db/init.sql
-```
-
-### 4. Run MinIO
-
-If not using Docker:
-
-```bash
-wget https://dl.min.io/server/minio/release/linux-amd64/minio
-chmod +x minio
-./minio server --address localhost:9000 ./minio-data
-```
-
-Or use:
+Use:
 ```bash
 docker-compose up --build
 ```
 
-## 🎨 Frontend (Live Server)
+## 🎨 Frontend (Python)
 
-Open with VSCode Live Server or:
+Open with VSCode Live Server or Python:
 
 ```bash
 cd web/templates
+python -m SimpleHTTPServer 'port'
 ```
 
 Then open:
 ```
-catalog.html or what do you want to open
+http://localhost:'port'/catalog.html or what do you want to open
 ```
 
 ## 📑 Tests
@@ -153,8 +140,8 @@ go test ./...
 
 This project has been created by:
 
-- Zhaxylykov Azamat, ***"kazakh painter"***
-- Romanuly Mansur, ***"цитата"***
+- Zhaxylykov A, ***"kazakh painter"***
+- Romanuly M, ***"FullStack overflow"***
 
 ## 📜 License
 
